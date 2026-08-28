@@ -350,3 +350,9 @@ export const mockLeaveRequests = [
   { id: 'lr1', workerId: 'w2', companyId: 'c1', startDate: '2024-12-20', endDate: '2024-12-31', type: 'Congés Payés', status: 'En attente' },
   { id: 'lr2', workerId: 'w4', companyId: 'c1', startDate: '2024-10-05', endDate: '2024-10-06', type: 'Maladie', status: 'Approuvé' },
 ];
+
+export const mockNotifications = [
+  { id: 'n1', title: 'Paiement Stripe reçu', message: 'Mairie de Paris a réglé l\'acompte.', date: 'Il y a 2 heures', read: false, roleTarget: 'company_admin' },
+  { id: 'n2', title: 'Assurance décennale', message: 'L\'assurance de Elec 2000 est expirée.', date: 'Hier', read: false, roleTarget: 'company_admin' },
+  { id: 'n3', title: 'Nouvelle demande', message: 'Luc Durand a posé une demande de congé.', date: 'Il y a 3 jours', read: true, roleTarget: 'company_admin' },
+];

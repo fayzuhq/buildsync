@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 export default function SiteManagerDashboard({
   currentCompanyId, currentUser, sites, workers, setWorkers,
   equipment, setEquipment, deliveries, setDeliveries, snags, setSnags,
-  expenses, setExpenses
+  expenses, setExpenses, leaveRequests, addNotification
 }) {
   const loggedInWorker = workers.find(w => w.id === currentUser?.workerId);
   const siteIdToUse = loggedInWorker ? loggedInWorker.siteAssigned : sites.find(s => s.companyId === currentCompanyId)?.id;
@@ -37,6 +37,20 @@ export default function SiteManagerDashboard({
   const handleTimesheetChange = (workerId, field, value) => {
      setTimesheet(timesheet.map(t => t.workerId === workerId ? { ...t, [field]: value } : t));
   };
+
+  // Close modals on Escape key
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowDeliveryModal(false);
+        setShowSnagModal(false);
+        setShowExpenseModal(false);
+        setShowTransferModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   if (!activeSite) {
     return <div className="p-4 text-white">Aucun chantier assigné pour cette entreprise.</div>;
@@ -129,10 +143,14 @@ export default function SiteManagerDashboard({
         description: newExpense.description,
         date: new Date().toISOString().split('T')[0]
      }]);
+     if (addNotification) {
+       addNotification("Nouvelle dépense chantier", `Note de frais de ${newExpense.amount}€ déclarée pour ${newExpense.supplier}.`, "company_admin");
+     }
      setShowExpenseModal(false);
      setNewExpense({ amount: '', supplier: '', description: '', receipt: null });
      showToast("Note de frais ajoutée.");
   };
+
 
   const tabs = [
     { id: 'daily', label: 'Quotidien, Pointages & Météo' },
@@ -168,9 +186,29 @@ export default function SiteManagerDashboard({
             Statut: {activeSite.status}
           </span>
           <div className="w-48 bg-slate-900 rounded-full h-2 mt-3 mb-1">
-             <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${activeSite.budget > 0 ? (activeSite.budgetConsumed/activeSite.budget)*100 : 0}%` }}></div>
+             {(() => {
+                const siteWorkersLocal = workers.filter(w => w.siteAssigned === activeSite.id);
+                const totalLaborHours = siteWorkersLocal.reduce((sum, w) => sum + w.hoursLoggedThisWeek, 0);
+                const laborCost = totalLaborHours * 35;
+                const siteExpenses = expenses.filter(exp => exp.siteId === activeSite.id).reduce((sum, exp) => sum + exp.amount, 0);
+                const dynamicConsumed = laborCost + siteExpenses;
+                const ratio = activeSite.budget > 0 ? Math.round((dynamicConsumed/activeSite.budget)*100) : 0;
+                return (
+                  <>
+                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${Math.min(ratio, 100)}%` }}></div>
+                  </>
+                );
+             })()}
           </div>
-          <p className="text-slate-500 text-xs">Budget: {activeSite.budgetConsumed.toLocaleString()} / {activeSite.budget.toLocaleString()} €</p>
+          {(() => {
+             const siteWorkersLocal = workers.filter(w => w.siteAssigned === activeSite.id);
+             const totalLaborHours = siteWorkersLocal.reduce((sum, w) => sum + w.hoursLoggedThisWeek, 0);
+             const laborCost = totalLaborHours * 35;
+             const siteExpenses = expenses.filter(exp => exp.siteId === activeSite.id).reduce((sum, exp) => sum + exp.amount, 0);
+             const dynamicConsumed = laborCost + siteExpenses;
+             const ratio = activeSite.budget > 0 ? Math.round((dynamicConsumed/activeSite.budget)*100) : 0;
+             return <p className="text-slate-500 text-xs text-right mt-1">Budget consommé: {dynamicConsumed.toLocaleString()} / {activeSite.budget.toLocaleString()} € ({ratio}%)</p>;
+          })()}
           <button className="text-blue-400 hover:underline text-xs mt-2">📄 Voir plans PDF</button>
         </div>
       </div>
@@ -231,6 +269,7 @@ export default function SiteManagerDashboard({
                    </thead>
                    <tbody className="divide-y divide-slate-700/50">
                      {siteWorkers.map(worker => {
+                       const isOnLeave = leaveRequests?.some(lr => lr.workerId === worker.id && lr.status === 'Approuvé');
                        const ts = timesheet.find(t => t.workerId === worker.id);
                        return (
                        <tr key={worker.id} className="hover:bg-slate-700/30">
@@ -245,22 +284,32 @@ export default function SiteManagerDashboard({
                              </div>
                            </div>
                          </td>
-                         <td className="px-5 py-3 text-center">
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input type="checkbox" checked={ts?.present} onChange={(e) => handleTimesheetChange(worker.id, 'present', e.target.checked)} className="sr-only peer" />
-                              <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-                            </label>
-                         </td>
-                         <td className="px-5 py-3 text-center">
-                            <select value={ts?.hours} onChange={(e) => handleTimesheetChange(worker.id, 'hours', e.target.value)} disabled={!ts?.present} className="bg-slate-900 border border-slate-700 rounded p-1 text-slate-300 disabled:opacity-50 outline-none">
-                               <option value="7h">7h</option>
-                               <option value="8h">8h</option>
-                               <option value="9h (Sup)">9h (Sup)</option>
-                            </select>
-                         </td>
-                         <td className="px-5 py-3 text-center">
-                             <input type="checkbox" checked={ts?.mealVoucher} onChange={(e) => handleTimesheetChange(worker.id, 'mealVoucher', e.target.checked)} disabled={!ts?.present} className="rounded border-slate-600 text-blue-600 focus:ring-blue-500 bg-slate-900 disabled:opacity-50 cursor-pointer" />
-                         </td>
+                         {isOnLeave ? (
+                           <td colSpan="3" className="px-5 py-3 text-center">
+                             <span className="bg-amber-900/30 text-amber-400 border border-amber-800 text-xs px-3 py-1 rounded-full font-bold inline-block w-fit">
+                               En congé
+                             </span>
+                           </td>
+                         ) : (
+                           <>
+                             <td className="px-5 py-3 text-center">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input type="checkbox" checked={ts?.present} onChange={(e) => handleTimesheetChange(worker.id, 'present', e.target.checked)} className="sr-only peer" />
+                                  <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                                </label>
+                             </td>
+                             <td className="px-5 py-3 text-center">
+                                <select value={ts?.hours} onChange={(e) => handleTimesheetChange(worker.id, 'hours', e.target.value)} disabled={!ts?.present} className="bg-slate-900 border border-slate-700 rounded p-1 text-slate-300 disabled:opacity-50 outline-none">
+                                   <option value="7h">7h</option>
+                                   <option value="8h">8h</option>
+                                   <option value="9h (Sup)">9h (Sup)</option>
+                                </select>
+                             </td>
+                             <td className="px-5 py-3 text-center">
+                                 <input type="checkbox" checked={ts?.mealVoucher} onChange={(e) => handleTimesheetChange(worker.id, 'mealVoucher', e.target.checked)} disabled={!ts?.present} className="rounded border-slate-600 text-blue-600 focus:ring-blue-500 bg-slate-900 disabled:opacity-50 cursor-pointer" />
+                             </td>
+                           </>
+                         )}
                        </tr>
                      )})}
                    </tbody>
@@ -472,8 +521,8 @@ export default function SiteManagerDashboard({
 
       {/* Modal - New Delivery */}
       {showDeliveryModal && (
-        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4" onClick={() => setShowDeliveryModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
               <h3 className="text-lg font-bold text-white">Nouvelle Livraison</h3>
               <button onClick={() => setShowDeliveryModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
@@ -498,8 +547,8 @@ export default function SiteManagerDashboard({
 
       {/* Modal - New Expense */}
       {showExpenseModal && (
-        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4" onClick={() => setShowExpenseModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
               <h3 className="text-lg font-bold text-white">Ajouter une dépense</h3>
               <button onClick={() => setShowExpenseModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
@@ -532,8 +581,8 @@ export default function SiteManagerDashboard({
 
       {/* Modal - New Snag */}
       {showSnagModal && (
-        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4" onClick={() => setShowSnagModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
               <h3 className="text-lg font-bold text-white">Créer une réserve</h3>
               <button onClick={() => setShowSnagModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>

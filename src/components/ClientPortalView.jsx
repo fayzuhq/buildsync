@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function ClientPortalView({ currentUser, sites, quotes, setQuotes, gedFolders }) {
+export default function ClientPortalView({ currentUser, sites, quotes, setQuotes, gedFolders, addNotification }) {
   const activeSite = sites.find(s => s.id === currentUser?.siteId);
   const siteQuotes = quotes.filter(q => q.siteId === activeSite?.id);
   const siteFolders = gedFolders.filter(f => f.siteId === activeSite?.id);
@@ -23,6 +23,7 @@ export default function ClientPortalView({ currentUser, sites, quotes, setQuotes
     showToast("Traitement sécurisé en cours via Stripe...");
     setTimeout(() => {
       setQuotes(quotes.map(q => q.id === quoteId ? { ...q, paymentStatus: 'Payé' } : q));
+      addNotification("Paiement Stripe reçu", `Le client ${currentUser.name} a réglé la situation ${quoteId}.`, "company_admin");
       setIsProcessing(false);
       showToast("Paiement validé avec succès. Merci de votre confiance !");
     }, 2000);

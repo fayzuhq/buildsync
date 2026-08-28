@@ -699,8 +699,8 @@ export default function CompanyAdminDashboard({
 
       {/* Modal - Fiche Chantier 360° */}
       {showSiteModal && selectedSite && (
-        <div className="fixed inset-0 bg-slate-950/90 flex justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-5xl my-auto">
+        <div className="fixed inset-0 bg-slate-950/90 flex justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowSiteModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-5xl my-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b border-slate-700 flex justify-between items-start bg-slate-900 sticky top-0 z-10">
               <div>
                  <h2 className="text-2xl font-bold text-white">Fiche Chantier 360° : {selectedSite.name}</h2>
@@ -795,8 +795,8 @@ export default function CompanyAdminDashboard({
 
       {/* PDF Modal */}
       {showPdfModal && (
-        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-[60] p-4">
-           <div className="bg-slate-800 border border-slate-700 p-4 rounded-lg shadow-xl max-w-3xl w-full">
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-[60] p-4" onClick={() => setShowPdfModal(false)}>
+           <div className="bg-slate-800 border border-slate-700 p-4 rounded-lg shadow-xl max-w-3xl w-full" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-4">
                  <h3 className="text-white font-bold">Visionneuse PDF / Plans</h3>
                  <button onClick={() => setShowPdfModal(false)} className="text-slate-400 hover:text-white text-2xl font-bold">✕</button>
@@ -812,8 +812,8 @@ export default function CompanyAdminDashboard({
 
       {/* Punch List Modal */}
       {showPunchListModal && selectedSite && (
-        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-[60] p-4">
-           <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[80vh]">
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-[60] p-4" onClick={() => setShowPunchListModal(false)}>
+           <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center p-5 bg-slate-900 border-b border-slate-700">
                  <h3 className="text-white font-bold text-lg">Punch List : {selectedSite.name}</h3>
                  <button onClick={() => setShowPunchListModal(false)} className="text-slate-400 hover:text-white text-2xl font-bold">✕</button>
@@ -841,8 +841,8 @@ export default function CompanyAdminDashboard({
 
       {/* Modal - Add Worker */}
       {showAddWorker && (
-        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-50 p-4" onClick={() => setShowAddWorker(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
               <h3 className="text-lg font-bold text-white">Ajouter un collaborateur</h3>
               <button onClick={() => setShowAddWorker(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
@@ -879,8 +879,8 @@ export default function CompanyAdminDashboard({
 
       {/* Modal - New Site */}
       {showNewSiteModal && (
-        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-50 p-4" onClick={() => setShowNewSiteModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
               <h3 className="text-lg font-bold text-white">Nouveau Chantier</h3>
               <button onClick={() => setShowNewSiteModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
@@ -913,8 +913,8 @@ export default function CompanyAdminDashboard({
 
       {/* Modal - New Subcontractor */}
       {showSubcontractorModal && (
-        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-50 p-4" onClick={() => setShowSubcontractorModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
               <h3 className="text-lg font-bold text-white">Ajouter un sous-traitant</h3>
               <button onClick={() => setShowSubcontractorModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
@@ -947,8 +947,8 @@ export default function CompanyAdminDashboard({
 
       {/* Modal - Interactive Assignment */}
       {showAssignmentModal && selectedResourceForAssignment && (
-        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4" onClick={() => setShowAssignmentModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
               <h3 className="text-lg font-bold text-white">Réaffecter la ressource</h3>
               <button onClick={() => setShowAssignmentModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
@@ -988,8 +988,8 @@ export default function CompanyAdminDashboard({
 
       {/* Modal - New Quote / Billing */}
       {showQuoteModal && (
-        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-50 p-4" onClick={() => setShowQuoteModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
               <h3 className="text-lg font-bold text-white">Nouvelle Situation / Devis</h3>
               <button onClick={() => setShowQuoteModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
