@@ -331,3 +331,8 @@ export const mockGedFolders = [
   { id: 'f2', companyId: 'c1', siteId: 's1', name: "PPSPS / Sécurité", files: ["PPSPS_Signe.pdf"] },
   { id: 'f3', companyId: 'c1', siteId: 's1', name: "Devis Signés", files: ["Devis_Client_Signe.pdf"] },
 ];
+
+export const mockExpenses = [
+  { id: 'exp1', companyId: 'c1', siteId: 's1', amount: 450, supplier: 'Leroy Merlin', description: 'Vis et petit outillage', date: '2024-09-10' },
+  { id: 'exp2', companyId: 'c1', siteId: 's1', amount: 120, supplier: 'Total Energies', description: 'Carburant engins', date: '2024-09-12' },
+];

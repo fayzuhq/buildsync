@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 
 export default function SiteManagerDashboard({
   currentCompanyId, currentUser, sites, workers, setWorkers,
-  equipment, setEquipment, deliveries, setDeliveries, snags, setSnags
+  equipment, setEquipment, deliveries, setDeliveries, snags, setSnags,
+  expenses, setExpenses
 }) {
   const loggedInWorker = workers.find(w => w.id === currentUser?.workerId);
   const siteIdToUse = loggedInWorker ? loggedInWorker.siteAssigned : sites.find(s => s.companyId === currentCompanyId)?.id;
@@ -24,6 +25,9 @@ export default function SiteManagerDashboard({
 
   const [showSnagModal, setShowSnagModal] = useState(false);
   const [newSnag, setNewSnag] = useState({ description: '', subcontractor: '', deadline: '', photo: null });
+
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [newExpense, setNewExpense] = useState({ amount: '', supplier: '', description: '', receipt: null });
 
   // Timesheet local state
   const [timesheet, setTimesheet] = useState(siteWorkers.map(w => ({
@@ -113,10 +117,28 @@ export default function SiteManagerDashboard({
      showToast("Réserve clôturée avec succès.");
   };
 
+  const handleAddExpense = (e) => {
+     e.preventDefault();
+     const newId = `exp_new_${Date.now()}`;
+     setExpenses([...expenses, {
+        id: newId,
+        companyId: currentCompanyId,
+        siteId: activeSite.id,
+        amount: parseFloat(newExpense.amount) || 0,
+        supplier: newExpense.supplier,
+        description: newExpense.description,
+        date: new Date().toISOString().split('T')[0]
+     }]);
+     setShowExpenseModal(false);
+     setNewExpense({ amount: '', supplier: '', description: '', receipt: null });
+     showToast("Note de frais ajoutée.");
+  };
+
   const tabs = [
     { id: 'daily', label: 'Quotidien, Pointages & Météo' },
     { id: 'equipment', label: 'Matériel du Chantier' },
     { id: 'deliveries', label: 'Livraisons & BL' },
+    { id: 'expenses', label: 'Notes de Frais & Achats Terrain' },
     { id: 'snags', label: 'Réserves & Qualité' }
   ];
 
@@ -146,7 +168,7 @@ export default function SiteManagerDashboard({
             Statut: {activeSite.status}
           </span>
           <div className="w-48 bg-slate-900 rounded-full h-2 mt-3 mb-1">
-             <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${activeSite.progress}%` }}></div>
+             <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${activeSite.budget > 0 ? (activeSite.budgetConsumed/activeSite.budget)*100 : 0}%` }}></div>
           </div>
           <p className="text-slate-500 text-xs">Budget: {activeSite.budgetConsumed.toLocaleString()} / {activeSite.budget.toLocaleString()} €</p>
           <button className="text-blue-400 hover:underline text-xs mt-2">📄 Voir plans PDF</button>
@@ -378,7 +400,42 @@ export default function SiteManagerDashboard({
         </div>
       )}
 
-      {/* TAB 4: SNAGS */}
+      {/* TAB 4: EXPENSES */}
+      {activeTab === 'expenses' && (
+        <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden mt-4">
+          <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
+             <h2 className="text-lg font-bold text-white">Notes de Frais & Achats Terrain</h2>
+             <button onClick={() => setShowExpenseModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-3 rounded text-sm transition-colors">+ Ajouter une dépense</button>
+          </div>
+          <div className="overflow-x-auto">
+             <table className="w-full text-left text-slate-300 text-sm">
+               <thead className="bg-slate-900/80 text-slate-400">
+                 <tr>
+                   <th className="px-5 py-3">Date</th>
+                   <th className="px-5 py-3">Fournisseur</th>
+                   <th className="px-5 py-3">Description</th>
+                   <th className="px-5 py-3 text-right">Montant</th>
+                 </tr>
+               </thead>
+               <tbody className="divide-y divide-slate-700/50">
+                 {expenses.filter(e => e.siteId === activeSite.id).map(exp => (
+                    <tr key={exp.id} className="hover:bg-slate-700/30">
+                       <td className="px-5 py-4 text-slate-400">{exp.date}</td>
+                       <td className="px-5 py-4 font-medium text-white">{exp.supplier}</td>
+                       <td className="px-5 py-4 text-slate-400">{exp.description}</td>
+                       <td className="px-5 py-4 font-mono text-right text-rose-400">-{exp.amount.toLocaleString()} €</td>
+                    </tr>
+                 ))}
+                 {expenses.filter(e => e.siteId === activeSite.id).length === 0 && (
+                    <tr><td colSpan="4" className="text-center p-4 text-slate-500">Aucune dépense enregistrée.</td></tr>
+                 )}
+               </tbody>
+             </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: SNAGS */}
       {activeTab === 'snags' && (
         <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden mt-4">
           <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
@@ -433,6 +490,40 @@ export default function SiteManagerDashboard({
               <div className="pt-4 flex justify-end space-x-3">
                 <button type="button" onClick={() => setShowDeliveryModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
                 <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow transition-colors">Ajouter</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - New Expense */}
+      {showExpenseModal && (
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
+              <h3 className="text-lg font-bold text-white">Ajouter une dépense</h3>
+              <button onClick={() => setShowExpenseModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+            <form onSubmit={handleAddExpense} className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Montant TTC (€)</label>
+                <input required type="number" step="0.01" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Fournisseur</label>
+                <input required type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" placeholder="Ex: Leroy Merlin..." value={newExpense.supplier} onChange={e => setNewExpense({...newExpense, supplier: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Description / Motif</label>
+                <textarea required className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none resize-none h-20" value={newExpense.description} onChange={e => setNewExpense({...newExpense, description: e.target.value})}></textarea>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Photo du ticket / facture</label>
+                <input type="file" accept="image/*" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-300 file:bg-slate-800 file:text-slate-300 file:border-0 file:rounded file:px-3 file:py-1 file:mr-3 hover:file:bg-slate-700 cursor-pointer outline-none" onChange={e => setNewExpense({...newExpense, receipt: e.target.files[0]})} />
+              </div>
+              <div className="pt-4 flex justify-end space-x-3">
+                <button type="button" onClick={() => setShowExpenseModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
+                <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow transition-colors">Enregistrer</button>
               </div>
             </form>
           </div>
