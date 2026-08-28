@@ -8,7 +8,7 @@ import LoginPage from './components/LoginPage';
 import {
   mockPlatformSettings, mockCompanies, mockSites, mockWorkers,
   mockEquipment, mockDeliveries, mockSnags, mockQuotes,
-  mockSubcontractors, mockGedFolders, mockAuditLogs, mockExpenses
+  mockSubcontractors, mockGedFolders, mockAuditLogs, mockExpenses, mockLeaveRequests
 } from './mockData';
 
 function App() {
@@ -28,6 +28,7 @@ function App() {
   const [gedFolders, setGedFolders] = useState(mockGedFolders);
   const [auditLogs, setAuditLogs] = useState(mockAuditLogs);
   const [expenses, setExpenses] = useState(mockExpenses);
+  const [leaveRequests, setLeaveRequests] = useState(mockLeaveRequests);
 
   const handleLogout = () => {
     setCurrentUser(null);
@@ -100,6 +101,7 @@ function App() {
                  gedFolders={gedFolders} setGedFolders={setGedFolders}
                  snags={snags}
                  expenses={expenses}
+                 leaveRequests={leaveRequests} setLeaveRequests={setLeaveRequests}
                />;
       case 'site_manager':
         return <SiteManagerDashboard
@@ -118,6 +120,7 @@ function App() {
                  currentUser={activeUser}
                  sites={sites}
                  workers={workers} setWorkers={setWorkers}
+                 leaveRequests={leaveRequests} setLeaveRequests={setLeaveRequests}
                />;
       default:
         return <div className="text-white">Role not found</div>;

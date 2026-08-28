@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 export default function CompanyAdminDashboard({
   currentCompanyId, companies, sites, setSites, workers, setWorkers,
   equipment, setEquipment, quotes, setQuotes, auditLogs,
-  subcontractors, setSubcontractors, gedFolders, setGedFolders, snags, expenses
+  subcontractors, setSubcontractors, gedFolders, setGedFolders, snags, expenses,
+  leaveRequests, setLeaveRequests
 }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddWorker, setShowAddWorker] = useState(false);
@@ -30,6 +31,7 @@ export default function CompanyAdminDashboard({
   const companyLogs = auditLogs.filter(log => log.companyId === currentCompanyId);
   const companyQuotes = quotes.filter(q => q.companyId === currentCompanyId);
   const companySubcontractors = subcontractors.filter(s => s.companyId === currentCompanyId);
+  const companyLeaves = leaveRequests.filter(lr => lr.companyId === currentCompanyId && lr.status === 'En attente');
 
   const companyHeavyEq = equipment.heavyMachinery.filter(e => e.companyId === currentCompanyId);
   const companyLightEq = equipment.lightTools.filter(e => e.companyId === currentCompanyId);
@@ -141,6 +143,16 @@ export default function CompanyAdminDashboard({
   const totalBudget = companySites.reduce((sum, s) => sum + s.budget, 0);
   const totalConsumed = companySites.reduce((sum, s) => sum + s.budgetConsumed, 0);
   const budgetRatio = totalBudget > 0 ? Math.round((totalConsumed/totalBudget)*100) : 0;
+
+  const handleApproveLeave = (leaveId) => {
+    setLeaveRequests(leaveRequests.map(lr => lr.id === leaveId ? { ...lr, status: 'Approuvé' } : lr));
+    showToast("Demande de congé approuvée.");
+  };
+
+  const handleRejectLeave = (leaveId) => {
+    setLeaveRequests(leaveRequests.map(lr => lr.id === leaveId ? { ...lr, status: 'Refusé' } : lr));
+    showToast("Demande de congé refusée.");
+  };
 
   const handleExportCSV = () => {
     let csvContent = "data:text/csv;charset=utf-8,Collaborateur,Heures Modifiées par Chef,Heures Sup (25%),Paniers Repas Validés\n";
@@ -489,39 +501,83 @@ export default function CompanyAdminDashboard({
 
         {/* TAB 6: STAFF */}
         {activeTab === 'staff' && (
-          <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
-            <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-white">Annuaire des Collaborateurs</h2>
-              <button
-                onClick={() => setShowAddWorker(true)}
-                className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm transition-colors"
-              >
-                + Ajouter
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-slate-300 text-sm">
-                <thead className="bg-slate-900/80 text-slate-400">
-                  <tr>
-                    <th className="px-5 py-3">Nom</th>
-                    <th className="px-5 py-3">Rôle</th>
-                    <th className="px-5 py-3">Téléphone</th>
-                    <th className="px-5 py-3">CACES / Certifications</th>
-                    <th className="px-5 py-3">Visite Médicale</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-700/50">
-                  {companyWorkers.map(worker => (
-                    <tr key={worker.id} className="hover:bg-slate-700/30">
-                      <td className="px-5 py-4 font-medium text-white">{worker.name}</td>
-                      <td className="px-5 py-4 text-slate-400">{worker.role}</td>
-                      <td className="px-5 py-4 text-slate-400">{worker.phone}</td>
-                      <td className="px-5 py-4 text-slate-400 text-xs">{worker.caces}</td>
-                      <td className="px-5 py-4 text-slate-400 text-xs">{worker.medicalExpiry}</td>
+          <div className="space-y-6">
+            <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
+              <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
+                <h2 className="text-lg font-bold text-white">Annuaire des Collaborateurs</h2>
+                <button
+                  onClick={() => setShowAddWorker(true)}
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm transition-colors"
+                >
+                  + Ajouter
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-slate-300 text-sm">
+                  <thead className="bg-slate-900/80 text-slate-400">
+                    <tr>
+                      <th className="px-5 py-3">Nom</th>
+                      <th className="px-5 py-3">Rôle</th>
+                      <th className="px-5 py-3">Téléphone</th>
+                      <th className="px-5 py-3">CACES / Certifications</th>
+                      <th className="px-5 py-3">Visite Médicale</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-700/50">
+                    {companyWorkers.map(worker => (
+                      <tr key={worker.id} className="hover:bg-slate-700/30">
+                        <td className="px-5 py-4 font-medium text-white">{worker.name}</td>
+                        <td className="px-5 py-4 text-slate-400">{worker.role}</td>
+                        <td className="px-5 py-4 text-slate-400">{worker.phone}</td>
+                        <td className="px-5 py-4 text-slate-400 text-xs">{worker.caces}</td>
+                        <td className="px-5 py-4 text-slate-400 text-xs">{worker.medicalExpiry}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
+              <div className="p-5 border-b border-slate-700 bg-slate-900/50">
+                <h2 className="text-lg font-bold text-white">Demandes d'absences en attente</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-slate-300 text-sm">
+                  <thead className="bg-slate-900/80 text-slate-400">
+                    <tr>
+                      <th className="px-5 py-3">Collaborateur</th>
+                      <th className="px-5 py-3">Dates</th>
+                      <th className="px-5 py-3">Motif</th>
+                      <th className="px-5 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-700/50">
+                    {companyLeaves.map(lr => (
+                      <tr key={lr.id} className="hover:bg-slate-700/30">
+                        <td className="px-5 py-4 font-medium text-white">
+                           {workers.find(w => w.id === lr.workerId)?.name}
+                        </td>
+                        <td className="px-5 py-4 text-slate-400">
+                           Du <span className="font-semibold text-white">{lr.startDate}</span> au <span className="font-semibold text-white">{lr.endDate}</span>
+                        </td>
+                        <td className="px-5 py-4">
+                           <span className="bg-amber-900/30 text-amber-400 border border-amber-800 text-xs px-2 py-0.5 rounded font-bold">
+                             {lr.type}
+                           </span>
+                        </td>
+                        <td className="px-5 py-4 text-right space-x-2">
+                           <button onClick={() => handleApproveLeave(lr.id)} className="bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-400 border border-emerald-800 px-3 py-1 rounded text-xs transition-colors">Approuver</button>
+                           <button onClick={() => handleRejectLeave(lr.id)} className="bg-rose-900/30 hover:bg-rose-900/50 text-rose-400 border border-rose-800 px-3 py-1 rounded text-xs transition-colors">Refuser</button>
+                        </td>
+                      </tr>
+                    ))}
+                    {companyLeaves.length === 0 && (
+                      <tr><td colSpan="4" className="text-center p-4 text-slate-500">Aucune demande en attente.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

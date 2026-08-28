@@ -336,3 +336,8 @@ export const mockExpenses = [
   { id: 'exp1', companyId: 'c1', siteId: 's1', amount: 450, supplier: 'Leroy Merlin', description: 'Vis et petit outillage', date: '2024-09-10' },
   { id: 'exp2', companyId: 'c1', siteId: 's1', amount: 120, supplier: 'Total Energies', description: 'Carburant engins', date: '2024-09-12' },
 ];
+
+export const mockLeaveRequests = [
+  { id: 'lr1', workerId: 'w2', companyId: 'c1', startDate: '2024-12-20', endDate: '2024-12-31', type: 'Congés Payés', status: 'En attente' },
+  { id: 'lr2', workerId: 'w4', companyId: 'c1', startDate: '2024-10-05', endDate: '2024-10-06', type: 'Maladie', status: 'Approuvé' },
+];
