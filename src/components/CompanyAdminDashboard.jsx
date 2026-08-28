@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
-import { mockCompanies, mockSites, mockWorkers, mockAuditLogs, mockEquipment, mockQuotes } from '../mockData';
+import { mockSites, mockWorkers, mockAuditLogs, mockEquipment, mockQuotes } from '../mockData';
 
-export default function CompanyAdminDashboard({ currentCompanyId }) {
+export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddWorker, setShowAddWorker] = useState(false);
   const [showSiteModal, setShowSiteModal] = useState(false);
+  const [showNewSiteModal, setShowNewSiteModal] = useState(false);
   const [selectedSite, setSelectedSite] = useState(null);
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [showPunchListModal, setShowPunchListModal] = useState(false);
 
   const [newWorker, setNewWorker] = useState({ name: '', role: 'Compagnon', email: '', phone: '', caces: '' });
+  const [newSite, setNewSite] = useState({ name: '', address: '', managerName: '', budget: '' });
   const [toastMessage, setToastMessage] = useState('');
 
-  const company = mockCompanies.find(c => c.id === currentCompanyId);
-  const companySites = mockSites.filter(s => s.companyId === currentCompanyId);
+  // Keep local copies for simulation
+  const [localSites, setLocalSites] = useState(mockSites.filter(s => s.companyId === currentCompanyId));
+
+  const company = companies.find(c => c.id === currentCompanyId);
   const companyWorkers = mockWorkers.filter(w => w.companyId === currentCompanyId);
   const companyLogs = mockAuditLogs.filter(log => log.companyId === currentCompanyId);
   const companyQuotes = mockQuotes.filter(q => q.companyId === currentCompanyId);
@@ -30,6 +36,24 @@ export default function CompanyAdminDashboard({ currentCompanyId }) {
     setTimeout(() => setToastMessage(''), 5000);
   };
 
+  const handleAddSite = (e) => {
+    e.preventDefault();
+    setLocalSites([...localSites, {
+      id: `s_new_${Date.now()}`,
+      companyId: currentCompanyId,
+      name: newSite.name,
+      address: newSite.address,
+      managerName: newSite.managerName,
+      status: 'En cours',
+      budget: parseInt(newSite.budget) || 0,
+      budgetConsumed: 0,
+      progress: 0,
+      workersCount: 0
+    }]);
+    setShowNewSiteModal(false);
+    setNewSite({ name: '', address: '', managerName: '', budget: '' });
+  };
+
   const openSiteModal = (site) => {
     setSelectedSite(site);
     setShowSiteModal(true);
@@ -38,14 +62,15 @@ export default function CompanyAdminDashboard({ currentCompanyId }) {
   const tabs = [
     { id: 'overview', label: "Vue d'ensemble & Chantiers" },
     { id: 'planning', label: "Planning & Équipes" },
-    { id: 'billing', label: "Devis & Facturation (Situations)" },
+    { id: 'billing', label: "Devis & Facturation" },
     { id: 'equipment', label: "Parc Matériel & Engins" },
-    { id: 'staff', label: "Collaborateurs & SMS Onboarding" },
+    { id: 'staff', label: "Collaborateurs" },
     { id: 'payroll', label: "Export Paie & Audit Logs" }
   ];
 
-  const totalBudget = companySites.reduce((sum, s) => sum + s.budget, 0);
-  const totalConsumed = companySites.reduce((sum, s) => sum + s.budgetConsumed, 0);
+  const totalBudget = localSites.reduce((sum, s) => sum + s.budget, 0);
+  const totalConsumed = localSites.reduce((sum, s) => sum + s.budgetConsumed, 0);
+  const budgetRatio = totalBudget > 0 ? Math.round((totalConsumed/totalBudget)*100) : 0;
 
   return (
     <div className="space-y-6">
@@ -65,7 +90,7 @@ export default function CompanyAdminDashboard({ currentCompanyId }) {
         </div>
         <div className="bg-slate-800/90 p-5 rounded-xl border border-slate-700 shadow">
           <h3 className="text-slate-400 text-sm font-semibold uppercase tracking-wider">Chantiers Actifs</h3>
-          <p className="text-3xl font-bold text-white mt-1">{companySites.length}</p>
+          <p className="text-3xl font-bold text-white mt-1">{localSites.length}</p>
         </div>
         <div className="bg-slate-800/90 p-5 rounded-xl border border-slate-700 shadow">
           <h3 className="text-slate-400 text-sm font-semibold uppercase tracking-wider">Total Effectif</h3>
@@ -73,7 +98,7 @@ export default function CompanyAdminDashboard({ currentCompanyId }) {
         </div>
         <div className="bg-slate-800/90 p-5 rounded-xl border border-slate-700 shadow">
           <h3 className="text-slate-400 text-sm font-semibold uppercase tracking-wider">Heures / Budget</h3>
-          <p className="text-3xl font-bold text-blue-400 mt-1">{Math.round((totalConsumed/totalBudget)*100)}% Consommé</p>
+          <p className="text-3xl font-bold text-blue-400 mt-1">{budgetRatio}% Consommé</p>
         </div>
       </div>
 
@@ -102,12 +127,12 @@ export default function CompanyAdminDashboard({ currentCompanyId }) {
           <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
             <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
               <h2 className="text-lg font-bold text-white">Chantiers en cours</h2>
-              <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm transition-colors">
+              <button onClick={() => setShowNewSiteModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm transition-colors">
                 + Nouveau Chantier
               </button>
             </div>
             <ul className="divide-y divide-slate-700/50">
-              {companySites.map(site => (
+              {localSites.map(site => (
                 <li key={site.id} onClick={() => openSiteModal(site)} className="p-5 hover:bg-slate-700/30 transition-colors cursor-pointer block sm:flex sm:justify-between sm:items-center space-y-4 sm:space-y-0">
                   <div className="sm:w-1/3">
                     <h4 className="font-bold text-slate-100 text-lg">{site.name}</h4>
@@ -141,11 +166,40 @@ export default function CompanyAdminDashboard({ currentCompanyId }) {
 
         {/* TAB 2: PLANNING */}
         {activeTab === 'planning' && (
-          <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow p-6 min-h-[400px] flex items-center justify-center text-slate-500">
-             <div className="text-center">
-                <span className="text-4xl block mb-4">📅</span>
-                <p>Composant Gantt / Calendrier (Vue semaine)</p>
-                <p className="text-sm">Allocation du personnel et des engins lourds.</p>
+          <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow p-6 min-h-[400px]">
+             <h2 className="text-lg font-bold text-white mb-4">Planning & Équipes (Semaine)</h2>
+             <div className="overflow-x-auto">
+               <div className="min-w-[800px]">
+                 <div className="grid grid-cols-6 gap-2 text-center text-sm font-semibold text-slate-400 mb-2">
+                    <div className="text-left">Ressource</div>
+                    <div>Lun</div>
+                    <div>Mar</div>
+                    <div>Mer</div>
+                    <div>Jeu</div>
+                    <div>Ven</div>
+                 </div>
+                 <div className="space-y-2">
+                    {companyWorkers.map(w => (
+                       <div key={w.id} className="grid grid-cols-6 gap-2 items-center text-sm">
+                          <div className="text-white font-medium">{w.name} <span className="block text-xs text-slate-500">{w.role}</span></div>
+                          <div className="col-span-3 bg-blue-900/50 border border-blue-800 text-blue-300 rounded p-1 text-xs text-center truncate">
+                            {localSites.find(s=>s.id === w.siteAssigned)?.name || 'Atelier'}
+                          </div>
+                          <div className="bg-amber-900/50 border border-amber-800 text-amber-300 rounded p-1 text-xs text-center">Intempérie</div>
+                          <div className="bg-slate-700 rounded p-1 text-xs text-center text-slate-400">Repos</div>
+                       </div>
+                    ))}
+                    <div className="my-4 border-b border-slate-700"></div>
+                    {companyHeavyEq.map(eq => (
+                       <div key={eq.id} className="grid grid-cols-6 gap-2 items-center text-sm">
+                          <div className="text-white font-medium">{eq.name}</div>
+                          <div className="col-span-5 bg-emerald-900/40 border border-emerald-800 text-emerald-300 rounded p-1 text-xs text-center truncate">
+                             {localSites.find(s=>s.id === eq.assignedSiteId)?.name || 'Dépôt'}
+                          </div>
+                       </div>
+                    ))}
+                 </div>
+               </div>
              </div>
           </div>
         )}
@@ -173,7 +227,7 @@ export default function CompanyAdminDashboard({ currentCompanyId }) {
                       <td className="px-5 py-4 font-mono text-slate-500">{quote.id}</td>
                       <td className="px-5 py-4 font-medium text-slate-200">
                          {quote.client} <br/>
-                         <span className="text-xs text-slate-500">{companySites.find(s=>s.id === quote.siteId)?.name}</span>
+                         <span className="text-xs text-slate-500">{localSites.find(s=>s.id === quote.siteId)?.name}</span>
                       </td>
                       <td className="px-5 py-4 font-mono">{quote.amount.toLocaleString()} €</td>
                       <td className="px-5 py-4">
@@ -213,7 +267,6 @@ export default function CompanyAdminDashboard({ currentCompanyId }) {
                       <th className="px-5 py-3">Chantier Actuel</th>
                       <th className="px-5 py-3">Statut</th>
                       <th className="px-5 py-3">Prochaine VGP</th>
-                      <th className="px-5 py-3">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700/50">
@@ -222,7 +275,7 @@ export default function CompanyAdminDashboard({ currentCompanyId }) {
                         <td className="px-5 py-3 font-medium text-white">{eq.name}</td>
                         <td className="px-5 py-3 text-slate-400">{eq.serialNumber}</td>
                         <td className="px-5 py-3 text-slate-400">
-                          {eq.assignedSiteId ? companySites.find(s=>s.id === eq.assignedSiteId)?.name : 'Dépôt Central'}
+                          {eq.assignedSiteId ? localSites.find(s=>s.id === eq.assignedSiteId)?.name : 'Dépôt Central'}
                         </td>
                         <td className="px-5 py-3">
                            <span className={`px-2 py-1 rounded text-xs font-semibold border ${eq.status === 'En service' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' : eq.status === 'Disponible' ? 'bg-blue-900/30 text-blue-400 border-blue-800' : 'bg-red-900/30 text-red-400 border-red-800'}`}>
@@ -230,9 +283,6 @@ export default function CompanyAdminDashboard({ currentCompanyId }) {
                            </span>
                         </td>
                         <td className="px-5 py-3 text-slate-400">{eq.nextInspectionDate}</td>
-                        <td className="px-5 py-3">
-                           <button className="text-blue-400 hover:text-blue-300 text-xs">Transférer / Réassigner</button>
-                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -285,7 +335,7 @@ export default function CompanyAdminDashboard({ currentCompanyId }) {
                 onClick={() => setShowAddWorker(true)}
                 className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm transition-colors"
               >
-                + Ajouter un collaborateur
+                + Ajouter
               </button>
             </div>
             <div className="overflow-x-auto">
@@ -320,9 +370,9 @@ export default function CompanyAdminDashboard({ currentCompanyId }) {
           <div className="space-y-6">
             <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
               <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
-                <h2 className="text-lg font-bold text-white">Export Paie (Mois en cours)</h2>
+                <h2 className="text-lg font-bold text-white">Export Paie (Semaine en cours)</h2>
                 <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm transition-colors flex items-center">
-                   <span>Exporter CSV / Sage / Lucca</span>
+                   <span>Exporter CSV / Sage</span>
                 </button>
               </div>
               <div className="overflow-x-auto p-5">
@@ -336,14 +386,18 @@ export default function CompanyAdminDashboard({ currentCompanyId }) {
                     </tr>
                   </thead>
                   <tbody>
-                     {companyWorkers.map(w => (
+                     {companyWorkers.map(w => {
+                       const heuresNormales = Math.min(w.hoursLoggedThisWeek, 35);
+                       const heuresSup = Math.max(0, w.hoursLoggedThisWeek - 35);
+                       const paniers = Math.ceil(w.hoursLoggedThisWeek / 7);
+                       return (
                        <tr key={w.id} className="border-b border-slate-700 last:border-0">
                          <td className="p-3 font-medium text-white">{w.name}</td>
-                         <td className="p-3">151.67 h</td>
-                         <td className="p-3 text-amber-400">{w.hoursLoggedThisWeek > 35 ? (w.hoursLoggedThisWeek - 35) * 4 : 0} h</td>
-                         <td className="p-3">20</td>
+                         <td className="p-3">{heuresNormales} h</td>
+                         <td className="p-3 text-amber-400">{heuresSup} h</td>
+                         <td className="p-3">{paniers}</td>
                        </tr>
-                     ))}
+                     )})}
                   </tbody>
                 </table>
               </div>
@@ -404,17 +458,13 @@ export default function CompanyAdminDashboard({ currentCompanyId }) {
                  <div className="space-y-4">
                     <h3 className="text-lg font-bold text-slate-200 border-b border-slate-700 pb-2">Document & GED</h3>
                     <ul className="space-y-2 text-sm">
-                       <li className="flex justify-between items-center bg-slate-900/50 p-2 rounded">
+                       <li className="flex justify-between items-center bg-slate-900/50 p-2 rounded border border-slate-700/50">
                           <span className="text-slate-300">📄 Permis de construire.pdf</span>
-                          <button className="text-blue-400 hover:underline">Voir</button>
+                          <button onClick={() => setShowPdfModal(true)} className="text-blue-400 hover:underline">Voir</button>
                        </li>
-                       <li className="flex justify-between items-center bg-slate-900/50 p-2 rounded">
-                          <span className="text-slate-300">📄 Plans d'architecte V2.pdf</span>
-                          <button className="text-blue-400 hover:underline">Voir</button>
-                       </li>
-                       <li className="flex justify-between items-center bg-slate-900/50 p-2 rounded">
-                          <span className="text-slate-300">📄 DOE (Dossier des Ouvrages Exécutés)</span>
-                          <span className="text-amber-500 text-xs border border-amber-500 px-1 rounded">En attente</span>
+                       <li className="flex justify-between items-center bg-slate-900/50 p-2 rounded border border-slate-700/50">
+                          <span className="text-slate-300">📄 Plans architecte V2.pdf</span>
+                          <button onClick={() => setShowPdfModal(true)} className="text-blue-400 hover:underline">Voir</button>
                        </li>
                     </ul>
                  </div>
@@ -422,24 +472,43 @@ export default function CompanyAdminDashboard({ currentCompanyId }) {
                     <h3 className="text-lg font-bold text-slate-200 border-b border-slate-700 pb-2">Réserves & Signature Client</h3>
                     <div className="bg-slate-900/50 p-4 rounded text-center border border-slate-700">
                        <p className="text-slate-400 mb-2">2 réserves ouvertes sur ce chantier.</p>
-                       <button className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded text-sm transition-colors">Consulter la Punch List</button>
+                       <button onClick={() => setShowPunchListModal(true)} className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded text-sm transition-colors">Consulter la Punch List</button>
                     </div>
                  </div>
                </div>
-
-               <div>
-                  <h3 className="text-lg font-bold text-slate-200 border-b border-slate-700 pb-2 mb-4">Live Photo Feed (Dernières photos du terrain)</h3>
-                  <div className="flex space-x-4 overflow-x-auto pb-4">
-                     {[1,2,3,4].map(i => (
-                        <div key={i} className="min-w-[150px] h-24 bg-slate-700 rounded-lg flex items-center justify-center text-slate-500 text-xs">
-                           Photo_{i}.jpg
-                        </div>
-                     ))}
-                  </div>
-               </div>
-
             </div>
           </div>
+        </div>
+      )}
+
+      {/* PDF Modal */}
+      {showPdfModal && (
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-[60] p-4">
+           <div className="bg-slate-800 border border-slate-700 p-4 rounded-lg shadow-xl max-w-2xl w-full">
+              <div className="flex justify-between items-center mb-4">
+                 <h3 className="text-white font-bold">Aperçu PDF</h3>
+                 <button onClick={() => setShowPdfModal(false)} className="text-slate-400 hover:text-white">✕</button>
+              </div>
+              <div className="bg-slate-900 h-96 flex items-center justify-center border border-slate-700 rounded text-slate-500">
+                 Visualiseur PDF Mock
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* Punch List Modal */}
+      {showPunchListModal && (
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-[60] p-4">
+           <div className="bg-slate-800 border border-slate-700 p-6 rounded-lg shadow-xl max-w-lg w-full">
+              <div className="flex justify-between items-center mb-4">
+                 <h3 className="text-white font-bold">Punch List (Mock)</h3>
+                 <button onClick={() => setShowPunchListModal(false)} className="text-slate-400 hover:text-white">✕</button>
+              </div>
+              <ul className="space-y-3">
+                 <li className="bg-slate-900 p-3 rounded border border-slate-700 text-slate-300 text-sm">1. Reprise peinture mur nord (En cours)</li>
+                 <li className="bg-slate-900 p-3 rounded border border-slate-700 text-slate-300 text-sm">2. Câble apparent tableau elec (Ouvert)</li>
+              </ul>
+           </div>
         </div>
       )}
 
@@ -475,6 +544,40 @@ export default function CompanyAdminDashboard({ currentCompanyId }) {
               <div className="pt-4 flex justify-end space-x-3">
                 <button type="button" onClick={() => setShowAddWorker(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
                 <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow">Envoyer accès par SMS</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - New Site */}
+      {showNewSiteModal && (
+        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
+              <h3 className="text-lg font-bold text-white">Nouveau Chantier</h3>
+              <button onClick={() => setShowNewSiteModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+            <form onSubmit={handleAddSite} className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Nom du chantier</label>
+                <input required type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newSite.name} onChange={e => setNewSite({...newSite, name: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Adresse</label>
+                <input required type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newSite.address} onChange={e => setNewSite({...newSite, address: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Chef de chantier</label>
+                <input required type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newSite.managerName} onChange={e => setNewSite({...newSite, managerName: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Budget (€)</label>
+                <input required type="number" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newSite.budget} onChange={e => setNewSite({...newSite, budget: e.target.value})} />
+              </div>
+              <div className="pt-4 flex justify-end space-x-3">
+                <button type="button" onClick={() => setShowNewSiteModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
+                <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow">Créer</button>
               </div>
             </form>
           </div>
