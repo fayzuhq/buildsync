@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function WorkerMobileView({ currentCompanyId, currentUser, sites, workers, setWorkers, leaveRequests, setLeaveRequests }) {
+export default function WorkerMobileView({ currentCompanyId, currentUser, sites, workers, setWorkers, leaveRequests, setLeaveRequests, addNotification }) {
   const worker = workers.find(w => w.id === currentUser?.workerId) || workers.find(w => w.companyId === currentCompanyId && w.role === 'Compagnon') || workers.find(w => w.role === 'Compagnon');
   const site = worker ? sites.find(s => s.id === worker.siteAssigned) : null;
 
@@ -97,6 +97,7 @@ export default function WorkerMobileView({ currentCompanyId, currentUser, sites,
       type: newLeave.type,
       status: 'En attente'
     }]);
+    addNotification("Nouvelle demande de congé", `${worker.name} a déposé une demande de congé.`, "company_admin");
     setShowLeaveModal(false);
     setNewLeave({ startDate: '', endDate: '', type: 'Congés Payés' });
     showToast("Demande d'absence envoyée à votre direction.");
@@ -238,8 +239,8 @@ export default function WorkerMobileView({ currentCompanyId, currentUser, sites,
 
       {/* Leaves Modal */}
       {showLeaveModal && (
-        <div className="fixed inset-0 bg-slate-950/95 flex flex-col justify-end z-50 p-4 pb-12 animate-in slide-in-from-bottom-full">
-           <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden">
+        <div className="fixed inset-0 bg-slate-950/95 flex flex-col justify-end z-50 p-4 pb-12 animate-in slide-in-from-bottom-full" onClick={() => setShowLeaveModal(false)}>
+           <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden" onClick={e => e.stopPropagation()}>
               <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
                  <h2 className="text-xl font-bold text-white">Demander une absence</h2>
                  <button onClick={() => setShowLeaveModal(false)} className="text-slate-400 hover:text-white text-xl bg-slate-800 w-8 h-8 rounded-full flex items-center justify-center">✕</button>
@@ -272,8 +273,8 @@ export default function WorkerMobileView({ currentCompanyId, currentUser, sites,
 
       {/* Meals Modal */}
       {showMeals && (
-         <div className="fixed inset-0 bg-slate-950/95 flex flex-col justify-end z-50 p-4 pb-12 animate-in slide-in-from-bottom-full">
-           <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 shadow-2xl relative">
+         <div className="fixed inset-0 bg-slate-950/95 flex flex-col justify-end z-50 p-4 pb-12 animate-in slide-in-from-bottom-full" onClick={() => setShowMeals(false)}>
+           <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 shadow-2xl relative" onClick={e => e.stopPropagation()}>
               <button onClick={() => setShowMeals(false)} className="absolute top-4 right-4 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center text-slate-400">✕</button>
               <h2 className="text-2xl font-bold text-white mb-6 text-center">Vos Indemnités</h2>
               <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-4 text-center">
@@ -287,8 +288,8 @@ export default function WorkerMobileView({ currentCompanyId, currentUser, sites,
 
       {/* Scanner Modal */}
       {showScanner && (
-         <div className="fixed inset-0 bg-slate-950/95 flex flex-col justify-end z-50 p-4 pb-12 animate-in slide-in-from-bottom-full">
-           <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 shadow-2xl relative flex flex-col items-center">
+         <div className="fixed inset-0 bg-slate-950/95 flex flex-col justify-end z-50 p-4 pb-12 animate-in slide-in-from-bottom-full" onClick={() => setShowScanner(false)}>
+           <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 shadow-2xl relative flex flex-col items-center" onClick={e => e.stopPropagation()}>
               <button onClick={() => setShowScanner(false)} className="absolute top-4 right-4 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center text-slate-400">✕</button>
               <h2 className="text-2xl font-bold text-white mb-2 text-center">Scan QR Code</h2>
               <p className="text-slate-400 text-sm text-center mb-6">Scannez un outil pour l'emprunter au dépôt.</p>
@@ -303,8 +304,8 @@ export default function WorkerMobileView({ currentCompanyId, currentUser, sites,
 
       {/* Safety Drawer */}
       {showSafety && (
-         <div className="fixed inset-0 bg-slate-950/95 flex flex-col justify-end z-50 p-4 pb-12 animate-in slide-in-from-bottom-full">
-           <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 shadow-2xl relative">
+         <div className="fixed inset-0 bg-slate-950/95 flex flex-col justify-end z-50 p-4 pb-12 animate-in slide-in-from-bottom-full" onClick={() => setShowSafety(false)}>
+           <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 shadow-2xl relative" onClick={e => e.stopPropagation()}>
               <button onClick={() => setShowSafety(false)} className="absolute top-4 right-4 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center text-slate-400">✕</button>
               <h2 className="text-2xl font-bold text-white mb-4 text-center">Consignes (EPI)</h2>
               <ul className="space-y-3">
@@ -327,8 +328,8 @@ export default function WorkerMobileView({ currentCompanyId, currentUser, sites,
 
       {/* Emergency Modal */}
       {showEmergency && (
-        <div className="fixed inset-0 bg-slate-950/95 flex flex-col justify-end z-50 p-4 pb-12 animate-in slide-in-from-bottom-full">
-           <div className="bg-slate-900 rounded-3xl border border-rose-900/50 p-6 shadow-2xl relative">
+        <div className="fixed inset-0 bg-slate-950/95 flex flex-col justify-end z-50 p-4 pb-12 animate-in slide-in-from-bottom-full" onClick={() => setShowEmergency(false)}>
+           <div className="bg-slate-900 rounded-3xl border border-rose-900/50 p-6 shadow-2xl relative" onClick={e => e.stopPropagation()}>
               <button onClick={() => setShowEmergency(false)} className="absolute top-4 right-4 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center text-slate-400">✕</button>
               <h2 className="text-2xl font-bold text-rose-500 mb-6 text-center">Protocoles d'Urgence</h2>
               <div className="space-y-4">

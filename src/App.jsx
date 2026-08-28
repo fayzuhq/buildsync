@@ -9,7 +9,7 @@ import LoginPage from './components/LoginPage';
 import {
   mockPlatformSettings, mockCompanies, mockSites, mockWorkers,
   mockEquipment, mockDeliveries, mockSnags, mockQuotes,
-  mockSubcontractors, mockGedFolders, mockAuditLogs, mockExpenses, mockLeaveRequests
+  mockSubcontractors, mockGedFolders, mockAuditLogs, mockExpenses, mockLeaveRequests, mockNotifications
 } from './mockData';
 
 function App() {
@@ -30,6 +30,18 @@ function App() {
   const [auditLogs, setAuditLogs] = useState(mockAuditLogs);
   const [expenses, setExpenses] = useState(mockExpenses);
   const [leaveRequests, setLeaveRequests] = useState(mockLeaveRequests);
+  const [notifications, setNotifications] = useState(mockNotifications);
+
+  const addNotification = (title, message, roleTarget) => {
+    setNotifications(prev => [{
+      id: `n_${Date.now()}`,
+      title,
+      message,
+      date: "À l'instant",
+      read: false,
+      roleTarget
+    }, ...prev]);
+  };
 
   const handleLogout = () => {
     setCurrentUser(null);
@@ -65,7 +77,14 @@ function App() {
   if (activeCompany && activeCompany.maintenanceMode && activeUser.role !== 'super_admin') {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col">
-        <Navbar currentUser={currentUser} impersonatedUser={impersonatedUser} stopImpersonation={stopImpersonation} onLogout={handleLogout} />
+        <Navbar
+          currentUser={currentUser}
+          impersonatedUser={impersonatedUser}
+          stopImpersonation={stopImpersonation}
+          onLogout={handleLogout}
+          notifications={notifications}
+          setNotifications={setNotifications}
+        />
         <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
           <div className="text-amber-500 text-6xl mb-4">🚧</div>
           <h1 className="text-2xl font-bold text-white mb-2">Espace Entreprise en Maintenance</h1>
@@ -114,6 +133,8 @@ function App() {
                  deliveries={deliveries} setDeliveries={setDeliveries}
                  snags={snags} setSnags={setSnags}
                  expenses={expenses} setExpenses={setExpenses}
+                 leaveRequests={leaveRequests}
+                 addNotification={addNotification}
                />;
       case 'worker':
         return <WorkerMobileView
@@ -122,6 +143,7 @@ function App() {
                  sites={sites}
                  workers={workers} setWorkers={setWorkers}
                  leaveRequests={leaveRequests} setLeaveRequests={setLeaveRequests}
+                 addNotification={addNotification}
                />;
       case 'client':
         return <ClientPortalView
@@ -129,6 +151,7 @@ function App() {
                  sites={sites}
                  quotes={quotes} setQuotes={setQuotes}
                  gedFolders={gedFolders}
+                 addNotification={addNotification}
                />;
       default:
         return <div className="text-white">Role not found</div>;
@@ -142,6 +165,8 @@ function App() {
         impersonatedUser={impersonatedUser}
         stopImpersonation={stopImpersonation}
         onLogout={handleLogout}
+        notifications={notifications}
+        setNotifications={setNotifications}
       />
 
       {/* Broadcast Banner */}
