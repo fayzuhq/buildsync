@@ -1,3 +1,8 @@
+export const mockPlatformSettings = {
+  globalMaintenance: false,
+  broadcastBanner: '', // "Mise à jour v2.4 ce soir à 23h00."
+};
+
 export const mockCompanies = [
   {
     id: 'c1',
@@ -5,11 +10,18 @@ export const mockCompanies = [
     siren: '123456789',
     contactEmail: 'admin@batipro.fr',
     planType: 'Enterprise',
-    status: 'Active',
+    status: 'Actif', // Actif / Suspendu / Maintenance
     memberCount: 45,
     activeSites: 12,
     monthlyFee: 999,
     renewalDate: '2024-12-01',
+    maintenanceMode: false,
+    features: {
+      grosEngins: true,
+      exportPaie: true,
+      situations: true,
+      signatureElectronique: true
+    }
   },
   {
     id: 'c2',
@@ -17,11 +29,18 @@ export const mockCompanies = [
     siren: '987654321',
     contactEmail: 'contact@artisans-reunis.fr',
     planType: 'Starter',
-    status: 'Active',
+    status: 'Actif',
     memberCount: 5,
     activeSites: 2,
     monthlyFee: 49,
     renewalDate: '2024-10-15',
+    maintenanceMode: false,
+    features: {
+      grosEngins: false,
+      exportPaie: true,
+      situations: false,
+      signatureElectronique: false
+    }
   },
   {
     id: 'c3',
@@ -29,11 +48,18 @@ export const mockCompanies = [
     siren: '555444333',
     contactEmail: 'direction@grosoeuvre.com',
     planType: 'Pro',
-    status: 'Suspended',
+    status: 'Suspendu',
     memberCount: 20,
     activeSites: 0,
     monthlyFee: 299,
     renewalDate: '2024-08-01',
+    maintenanceMode: false,
+    features: {
+      grosEngins: true,
+      exportPaie: true,
+      situations: true,
+      signatureElectronique: false
+    }
   },
 ];
 
@@ -46,6 +72,8 @@ export const mockSites = [
     managerName: 'Jean Dupont',
     status: 'En cours',
     budget: 5000000,
+    budgetConsumed: 3200000,
+    progress: 65,
     workersCount: 25,
   },
   {
@@ -56,6 +84,8 @@ export const mockSites = [
     managerName: 'Marie Curie',
     status: 'En retard',
     budget: 1200000,
+    budgetConsumed: 1100000,
+    progress: 70,
     workersCount: 15,
   },
   {
@@ -66,6 +96,8 @@ export const mockSites = [
     managerName: 'Paul Martin',
     status: 'Terminé',
     budget: 80000,
+    budgetConsumed: 78000,
+    progress: 100,
     workersCount: 3,
   },
 ];
@@ -78,6 +110,8 @@ export const mockWorkers = [
     role: 'Chef de chantier',
     siteAssigned: 's1',
     phone: '0612345678',
+    caces: 'CACES R482 Cat A',
+    medicalExpiry: '2025-06-12',
     hoursLoggedThisWeek: 39,
   },
   {
@@ -87,6 +121,8 @@ export const mockWorkers = [
     role: 'Compagnon',
     siteAssigned: 's1',
     phone: '0698765432',
+    caces: 'CACES R486',
+    medicalExpiry: '2024-11-20',
     hoursLoggedThisWeek: 35,
   },
   {
@@ -96,6 +132,8 @@ export const mockWorkers = [
     role: 'Chef de chantier',
     siteAssigned: 's3',
     phone: '0655443322',
+    caces: 'Aucun',
+    medicalExpiry: '2025-01-10',
     hoursLoggedThisWeek: 42,
   },
   {
@@ -105,6 +143,8 @@ export const mockWorkers = [
     role: 'Compagnon',
     siteAssigned: 's2',
     phone: '0677889900',
+    caces: 'Aucun',
+    medicalExpiry: '2024-09-30',
     hoursLoggedThisWeek: 20,
   },
 ];
@@ -193,7 +233,7 @@ export const mockEquipment = {
     {
       id: 'hm1',
       companyId: 'c1',
-      name: 'Pelleteuse Volvo EC220E',
+      name: 'Pelleteuse sur chenilles Volvo EC220E',
       model: 'EC220E',
       serialNumber: 'VOL220E99812',
       assignedSiteId: 's1',
@@ -254,3 +294,25 @@ export const mockEquipment = {
     },
   ]
 };
+
+export const mockQuotes = [
+  { id: 'q1', companyId: 'c1', siteId: 's1', client: 'Mairie de Paris', amount: 5000000, progressBilling: 30, paymentStatus: 'Payé' },
+  { id: 'q2', companyId: 'c1', siteId: 's2', client: 'SCI Les Pins', amount: 1200000, progressBilling: 60, paymentStatus: 'En retard' },
+  { id: 'q3', companyId: 'c2', siteId: 's3', client: 'M. Dubois', amount: 80000, progressBilling: 100, paymentStatus: 'Facturé' },
+];
+
+export const mockDeliveries = [
+  { id: 'd1', companyId: 'c1', siteId: 's1', description: '14m³ Béton Lafarge', time: '08:30', signature: true },
+  { id: 'd2', companyId: 'c1', siteId: 's1', description: '2 Palettes de parpaings', time: '10:00', signature: false },
+];
+
+export const mockSnags = [
+  { id: 'sn1', companyId: 'c1', siteId: 's1', description: 'Reprise peinture mur nord', subcontractor: 'Peinture Pro', deadline: '2024-10-01', status: 'En cours' },
+  { id: 'sn2', companyId: 'c1', siteId: 's1', description: 'Câble apparent tableau elec', subcontractor: 'Elec 2000', deadline: '2024-09-25', status: 'Ouvert' },
+];
+
+export const mockInvoicesSaaS = [
+  { id: 'inv1', companyName: 'BâtiPro Construct', amount: 999, date: '2024-09-01', status: 'Payé' },
+  { id: 'inv2', companyName: 'Artisans Réunis', amount: 49, date: '2024-09-05', status: 'Payé' },
+  { id: 'inv3', companyName: 'GrosOeuvre SA', amount: 299, date: '2024-08-01', status: 'Rejeté' },
+];
