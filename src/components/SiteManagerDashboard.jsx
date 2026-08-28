@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { mockSites, mockWorkers, mockEquipment } from '../mockData';
+import { mockSites, mockWorkers, mockEquipment, mockDeliveries, mockSnags } from '../mockData';
 
 export default function SiteManagerDashboard({ currentCompanyId }) {
   const activeSite = mockSites.find(s => s.companyId === currentCompanyId) || mockSites[0];
@@ -7,6 +7,9 @@ export default function SiteManagerDashboard({ currentCompanyId }) {
 
   const siteHeavyEq = mockEquipment.heavyMachinery.filter(e => e.assignedSiteId === activeSite?.id);
   const siteLightEq = mockEquipment.lightTools.filter(e => e.assignedSiteId === activeSite?.id);
+
+  const siteDeliveries = mockDeliveries.filter(d => d.siteId === activeSite?.id);
+  const siteSnags = mockSnags.filter(sn => sn.siteId === activeSite?.id);
 
   const [activeTab, setActiveTab] = useState('daily');
   const [report, setReport] = useState('');
@@ -36,28 +39,34 @@ export default function SiteManagerDashboard({ currentCompanyId }) {
   };
 
   const tabs = [
-    { id: 'daily', label: 'Quotidien & Pointages' },
-    { id: 'equipment', label: 'Matériel du Chantier' }
+    { id: 'daily', label: 'Quotidien, Pointages & Météo' },
+    { id: 'equipment', label: 'Matériel du Chantier' },
+    { id: 'deliveries', label: 'Livraisons & BL' },
+    { id: 'snags', label: 'Réserves & Qualité' }
   ];
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow flex flex-col md:flex-row justify-between items-start md:items-center">
+      <div className="bg-slate-800/90 p-6 rounded-xl border border-slate-700 shadow flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">{activeSite.name}</h1>
           <p className="text-slate-400 mt-1 flex items-center">
              <span className="mr-2">📍</span> {activeSite.address}
           </p>
         </div>
-        <div className="mt-4 md:mt-0 text-right">
-          <span className={`px-3 py-1 rounded-full text-sm font-bold border ${
+        <div className="mt-4 md:mt-0 text-right flex flex-col items-end">
+          <span className={`px-3 py-1 rounded-full text-sm font-bold border inline-block ${
             activeSite.status === 'En cours' ? 'bg-blue-900/30 text-blue-400 border-blue-800' :
-            activeSite.status === 'En retard' ? 'bg-red-900/30 text-red-400 border-red-800' :
+            activeSite.status === 'En retard' ? 'bg-amber-900/30 text-amber-400 border-amber-800' :
             'bg-emerald-900/30 text-emerald-400 border-emerald-800'
           }`}>
             Statut: {activeSite.status}
           </span>
-          <p className="text-slate-500 text-sm mt-2">Budget: {activeSite.budget.toLocaleString()} €</p>
+          <div className="w-48 bg-slate-900 rounded-full h-2 mt-3 mb-1">
+             <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${activeSite.progress}%` }}></div>
+          </div>
+          <p className="text-slate-500 text-xs">Budget: {activeSite.budgetConsumed.toLocaleString()} / {activeSite.budget.toLocaleString()} €</p>
+          <button className="text-blue-400 hover:underline text-xs mt-2">📄 Voir plans PDF</button>
         </div>
       </div>
 
@@ -78,105 +87,138 @@ export default function SiteManagerDashboard({ currentCompanyId }) {
         ))}
       </div>
 
+      {/* TAB 1: DAILY / WEATHER */}
       {activeTab === 'daily' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
+        <div className="space-y-6 mt-4">
 
-          {/* Workers Check-in */}
-          <div className="lg:col-span-2 bg-slate-800 rounded-xl border border-slate-700 shadow overflow-hidden">
-            <div className="p-5 border-b border-slate-700 bg-slate-900/50">
-              <h2 className="text-lg font-bold text-white">Pointages du Jour (Équipe)</h2>
-            </div>
-            <ul className="divide-y divide-slate-700/50">
-              {siteWorkers.map(worker => (
-                <li key={worker.id} className="p-5 flex items-center justify-between hover:bg-slate-700/30 transition-colors">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-blue-400 font-bold border border-slate-600">
-                      {worker.name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-white font-medium">{worker.name}</p>
-                      <p className="text-slate-500 text-sm">{worker.role}</p>
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <button className="px-3 py-1 bg-emerald-900/30 text-emerald-400 rounded-lg text-sm hover:bg-emerald-900/50 border border-emerald-800 transition-colors">
-                      Présent
-                    </button>
-                    <button className="px-3 py-1 bg-red-900/30 text-red-400 rounded-lg text-sm hover:bg-red-900/50 border border-red-800 transition-colors">
-                      Absent
-                    </button>
-                  </div>
-                </li>
-              ))}
-              {siteWorkers.length === 0 && (
-                <li className="p-5 text-center text-slate-500">Aucun ouvrier assigné.</li>
-              )}
-            </ul>
+          {/* Météo Bar */}
+          <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow p-5 flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
+             <h3 className="text-white font-bold whitespace-nowrap">Météo du jour :</h3>
+             <select className="bg-slate-900 border border-slate-700 text-slate-300 rounded p-2 focus:border-blue-500 focus:ring-1 outline-none w-full sm:w-auto">
+               <option>☀️ Ensoleillé</option>
+               <option>🌧️ Pluie battante</option>
+               <option>❄️ Gel</option>
+               <option>💨 Vent violent</option>
+             </select>
+             <div className="flex items-center space-x-2 w-full sm:w-auto">
+               <input type="number" defaultValue={15} className="w-16 bg-slate-900 border border-slate-700 rounded p-2 text-slate-300 text-center" />
+               <span className="text-slate-400">°C</span>
+             </div>
+             <p className="text-xs text-slate-500 italic flex-grow text-right hidden lg:block">Journal météo légal (intempéries)</p>
           </div>
 
-          {/* Daily Report Form */}
-          <div className="bg-slate-800 rounded-xl border border-slate-700 shadow overflow-hidden h-fit">
-            <div className="p-5 border-b border-slate-700 bg-slate-900/50">
-              <h2 className="text-lg font-bold text-white">Rapport Journalier</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            {/* Workers Check-in */}
+            <div className="lg:col-span-2 bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
+              <div className="p-5 border-b border-slate-700 bg-slate-900/50">
+                <h2 className="text-lg font-bold text-white">Pointages de l'équipe (Timesheet)</h2>
+              </div>
+              <div className="overflow-x-auto">
+                 <table className="w-full text-left text-slate-300 text-sm">
+                   <thead className="bg-slate-900/50 text-slate-400">
+                     <tr>
+                       <th className="px-5 py-3">Collaborateur</th>
+                       <th className="px-5 py-3 text-center">Présence</th>
+                       <th className="px-5 py-3 text-center">Heures</th>
+                       <th className="px-5 py-3 text-center">Panier Repas</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-slate-700/50">
+                     {siteWorkers.map(worker => (
+                       <tr key={worker.id} className="hover:bg-slate-700/30">
+                         <td className="px-5 py-3">
+                           <div className="flex items-center space-x-3">
+                             <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-blue-400 font-bold border border-slate-600 shrink-0">
+                               {worker.name.charAt(0)}
+                             </div>
+                             <div>
+                               <p className="text-white font-medium">{worker.name}</p>
+                               <p className="text-slate-500 text-xs">{worker.role}</p>
+                             </div>
+                           </div>
+                         </td>
+                         <td className="px-5 py-3 text-center">
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input type="checkbox" defaultChecked className="sr-only peer" />
+                              <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                            </label>
+                         </td>
+                         <td className="px-5 py-3 text-center">
+                            <select className="bg-slate-900 border border-slate-700 rounded p-1 text-slate-300">
+                               <option>7h</option>
+                               <option selected>8h</option>
+                               <option>9h (Sup)</option>
+                            </select>
+                         </td>
+                         <td className="px-5 py-3 text-center">
+                             <input type="checkbox" defaultChecked className="rounded border-slate-600 text-blue-600 focus:ring-blue-500 bg-slate-900" />
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+              </div>
             </div>
-            <form onSubmit={handleSubmitReport} className="p-5 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Avancement et remarques</label>
-                <textarea
-                  className="w-full h-32 bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
-                  placeholder="Ex: Coulage béton terminé. Intempéries ce matin..."
-                  value={report}
-                  onChange={(e) => setReport(e.target.value)}
-                  required
-                ></textarea>
-              </div>
 
-              <div className="flex items-center space-x-2 text-slate-300 text-sm mb-4">
-                 <input type="checkbox" id="incident" className="rounded border-slate-600 text-blue-600 focus:ring-blue-500 bg-slate-900" />
-                 <label htmlFor="incident">Signaler un incident (Sécurité)</label>
+            {/* Daily Report Form */}
+            <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden h-fit flex flex-col">
+              <div className="p-5 border-b border-slate-700 bg-slate-900/50">
+                <h2 className="text-lg font-bold text-white">Rapport Journalier</h2>
               </div>
-
-              <button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-lg shadow transition-colors"
-              >
-                Envoyer le rapport
-              </button>
-            </form>
+              <form onSubmit={handleSubmitReport} className="p-5 space-y-4 flex-grow flex flex-col">
+                <div className="flex-grow flex flex-col">
+                  <textarea
+                    className="w-full flex-grow min-h-[120px] bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 focus:ring-1 outline-none resize-none"
+                    placeholder="Notes du jour (avancement, problèmes rencontrés...)"
+                    value={report}
+                    onChange={(e) => setReport(e.target.value)}
+                    required
+                  ></textarea>
+                </div>
+                <div className="flex items-center space-x-2 text-slate-300 text-sm py-2">
+                   <input type="checkbox" id="incident" className="rounded border-slate-600 text-amber-500 focus:ring-amber-500 bg-slate-900" />
+                   <label htmlFor="incident" className="text-amber-400 font-medium cursor-pointer">Signaler un incident</label>
+                </div>
+                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-4 rounded-lg shadow transition-colors">
+                  Enregistrer le rapport
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
+      {/* TAB 2: EQUIPMENT */}
       {activeTab === 'equipment' && (
         <div className="space-y-6 mt-4">
-           {/* Heavy Machinery on site */}
-           <div className="bg-slate-800 rounded-xl border border-slate-700 shadow overflow-hidden">
+           <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
             <div className="p-5 border-b border-slate-700 bg-slate-900/50">
-              <h2 className="text-lg font-bold text-white">Engins sur site</h2>
+              <h2 className="text-lg font-bold text-white">Gros Engins sur site</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-slate-300 text-sm">
                 <thead className="bg-slate-900/80 text-slate-400">
                   <tr>
-                    <th className="px-5 py-3">Engin</th>
+                    <th className="px-5 py-3">Équipement / Modèle</th>
                     <th className="px-5 py-3">Statut</th>
                     <th className="px-5 py-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {siteHeavyEq.map(eq => (
-                    <tr key={eq.id} className="hover:bg-slate-700/30 transition-colors">
+                    <tr key={eq.id} className="hover:bg-slate-700/30">
                       <td className="px-5 py-4">
                          <div className="font-semibold text-white">{eq.name}</div>
                          <div className="text-xs text-slate-500">S/N: {eq.serialNumber}</div>
                       </td>
                       <td className="px-5 py-4">
-                         <span className={`px-2 py-1 rounded text-xs font-semibold ${eq.status === 'En service' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-800' : eq.status === 'Disponible' ? 'bg-blue-900/30 text-blue-400 border border-blue-800' : 'bg-red-900/30 text-red-400 border border-red-800'}`}>
+                         <span className={`px-2 py-1 rounded text-xs font-semibold border ${eq.status === 'En service' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' : eq.status === 'Disponible' ? 'bg-blue-900/30 text-blue-400 border-blue-800' : 'bg-red-900/30 text-red-400 border-red-800'}`}>
                            {eq.status}
                          </span>
                       </td>
                       <td className="px-5 py-4 text-right">
-                         <button onClick={() => openTransfer(eq)} className="text-blue-400 hover:text-blue-300 text-sm transition-colors">Signaler / Transférer</button>
+                         <button onClick={() => openTransfer(eq)} className="text-blue-400 hover:text-blue-300 text-sm">Déclarer panne / Transférer</button>
                       </td>
                     </tr>
                   ))}
@@ -186,8 +228,7 @@ export default function SiteManagerDashboard({ currentCompanyId }) {
             </div>
            </div>
 
-           {/* Light Tools on site */}
-           <div className="bg-slate-800 rounded-xl border border-slate-700 shadow overflow-hidden">
+           <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
             <div className="p-5 border-b border-slate-700 bg-slate-900/50">
               <h2 className="text-lg font-bold text-white">Petit Outillage</h2>
             </div>
@@ -195,20 +236,20 @@ export default function SiteManagerDashboard({ currentCompanyId }) {
               <table className="w-full text-left text-slate-300 text-sm">
                 <thead className="bg-slate-900/80 text-slate-400">
                   <tr>
-                    <th className="px-5 py-3">Outil</th>
+                    <th className="px-5 py-3">Équipement / Modèle</th>
                     <th className="px-5 py-3">Assigné à</th>
                     <th className="px-5 py-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {siteLightEq.map(eq => (
-                    <tr key={eq.id} className="hover:bg-slate-700/30 transition-colors">
+                    <tr key={eq.id} className="hover:bg-slate-700/30">
                       <td className="px-5 py-4 font-medium text-white">{eq.name}</td>
                       <td className="px-5 py-4 text-slate-400">
                         {eq.currentHolderWorkerId ? siteWorkers.find(w=>w.id === eq.currentHolderWorkerId)?.name : 'Libre sur chantier'}
                       </td>
                       <td className="px-5 py-4 text-right">
-                         <button onClick={() => openTransfer(eq)} className="text-blue-400 hover:text-blue-300 text-sm transition-colors">Attribuer</button>
+                         <button onClick={() => openTransfer(eq)} className="text-blue-400 hover:text-blue-300 text-sm">Attribuer</button>
                       </td>
                     </tr>
                   ))}
@@ -220,19 +261,83 @@ export default function SiteManagerDashboard({ currentCompanyId }) {
         </div>
       )}
 
+      {/* TAB 3: DELIVERIES */}
+      {activeTab === 'deliveries' && (
+        <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden mt-4">
+          <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
+             <h2 className="text-lg font-bold text-white">Bons de Réception (BL)</h2>
+             <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-3 rounded text-sm">+ Nouvelle Livraison</button>
+          </div>
+          <div className="overflow-x-auto">
+             <table className="w-full text-left text-slate-300 text-sm">
+               <thead className="bg-slate-900/80 text-slate-400">
+                 <tr>
+                   <th className="px-5 py-3">Heure</th>
+                   <th className="px-5 py-3">Description</th>
+                   <th className="px-5 py-3">Signature / Photo</th>
+                 </tr>
+               </thead>
+               <tbody className="divide-y divide-slate-700/50">
+                 {siteDeliveries.map(d => (
+                    <tr key={d.id} className="hover:bg-slate-700/30">
+                       <td className="px-5 py-4 text-slate-400">{d.time}</td>
+                       <td className="px-5 py-4 font-medium text-white">{d.description}</td>
+                       <td className="px-5 py-4">
+                          {d.signature ? (
+                            <span className="text-emerald-400 flex items-center">✓ Signé</span>
+                          ) : (
+                            <button className="text-blue-400 border border-blue-400/50 rounded px-2 py-1 text-xs hover:bg-blue-900/30">📸 Ajouter BL</button>
+                          )}
+                       </td>
+                    </tr>
+                 ))}
+               </tbody>
+             </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: SNAGS */}
+      {activeTab === 'snags' && (
+        <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden mt-4">
+          <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
+             <h2 className="text-lg font-bold text-white">Réserves & Contrôle Qualité</h2>
+             <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-3 rounded text-sm">+ Créer une réserve</button>
+          </div>
+          <div className="p-5 grid gap-4 grid-cols-1 md:grid-cols-2">
+             {siteSnags.map(sn => (
+                <div key={sn.id} className="bg-slate-900 border border-slate-700 rounded-lg p-4 flex flex-col">
+                   <div className="flex justify-between items-start mb-2">
+                      <span className={`px-2 py-0.5 rounded text-xs font-bold border ${sn.status === 'Ouvert' ? 'bg-red-900/30 text-red-400 border-red-800' : 'bg-blue-900/30 text-blue-400 border-blue-800'}`}>
+                         {sn.status}
+                      </span>
+                      <span className="text-xs text-slate-500">Échéance: {sn.deadline}</span>
+                   </div>
+                   <p className="text-white font-medium mb-1">{sn.description}</p>
+                   <p className="text-sm text-slate-400 mb-4">Sous-traitant : {sn.subcontractor}</p>
+                   <div className="mt-auto flex space-x-2">
+                      <button className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded text-sm border border-slate-600">📸 Photo</button>
+                      <button className="flex-1 bg-blue-900/30 hover:bg-blue-900/50 text-blue-400 py-1.5 rounded text-sm border border-blue-800">Clôturer</button>
+                   </div>
+                </div>
+             ))}
+          </div>
+        </div>
+      )}
+
       {/* Modal - Transfer/Assign Equipment */}
       {showTransferModal && selectedEq && (
         <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
             <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
               <h3 className="text-lg font-bold text-white">Action sur Matériel</h3>
-              <button onClick={() => setShowTransferModal(false)} className="text-slate-400 hover:text-white transition-colors">✕</button>
+              <button onClick={() => setShowTransferModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
             </div>
             <form onSubmit={handleTransfer} className="p-5 space-y-4">
               <div>
                 <p className="text-sm text-slate-400 mb-2">Matériel concerné : <strong className="text-white">{selectedEq.name}</strong></p>
                 <label className="block text-sm font-medium text-slate-300 mb-1">Type d'action</label>
-                <select className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+                <select className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none">
                   <option>Attribuer à un ouvrier</option>
                   <option>Signaler en panne / maintenance</option>
                   <option>Demander transfert vers autre chantier</option>
@@ -241,11 +346,11 @@ export default function SiteManagerDashboard({ currentCompanyId }) {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">Détails / Remarques</label>
-                <textarea className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none h-20"></textarea>
+                <textarea className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none resize-none h-20"></textarea>
               </div>
               <div className="pt-4 flex justify-end space-x-3">
-                <button type="button" onClick={() => setShowTransferModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
-                <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 transition-colors shadow">Valider</button>
+                <button type="button" onClick={() => setShowTransferModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700">Annuler</button>
+                <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow">Valider</button>
               </div>
             </form>
           </div>
