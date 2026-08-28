@@ -5,13 +5,28 @@ import CompanyAdminDashboard from './components/CompanyAdminDashboard';
 import SiteManagerDashboard from './components/SiteManagerDashboard';
 import WorkerMobileView from './components/WorkerMobileView';
 import LoginPage from './components/LoginPage';
-import { mockPlatformSettings, mockCompanies } from './mockData';
+import {
+  mockPlatformSettings, mockCompanies, mockSites, mockWorkers,
+  mockEquipment, mockDeliveries, mockSnags, mockQuotes,
+  mockSubcontractors, mockGedFolders, mockAuditLogs
+} from './mockData';
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [impersonatedUser, setImpersonatedUser] = useState(null);
+
+  // Lifted Global States
   const [globalSettings, setGlobalSettings] = useState(mockPlatformSettings);
   const [companies, setCompanies] = useState(mockCompanies);
+  const [sites, setSites] = useState(mockSites);
+  const [workers, setWorkers] = useState(mockWorkers);
+  const [equipment, setEquipment] = useState(mockEquipment);
+  const [deliveries, setDeliveries] = useState(mockDeliveries);
+  const [snags, setSnags] = useState(mockSnags);
+  const [quotes, setQuotes] = useState(mockQuotes);
+  const [subcontractors, setSubcontractors] = useState(mockSubcontractors);
+  const [gedFolders, setGedFolders] = useState(mockGedFolders);
+  const [auditLogs, setAuditLogs] = useState(mockAuditLogs);
 
   const handleLogout = () => {
     setCurrentUser(null);
@@ -69,13 +84,38 @@ function App() {
                  setGlobalSettings={setGlobalSettings}
                  companies={companies}
                  setCompanies={setCompanies}
+                 auditLogs={auditLogs}
                />;
       case 'company_admin':
-        return <CompanyAdminDashboard currentCompanyId={activeUser.companyId} companies={companies} />;
+        return <CompanyAdminDashboard
+                 currentCompanyId={activeUser.companyId}
+                 companies={companies}
+                 sites={sites} setSites={setSites}
+                 workers={workers} setWorkers={setWorkers}
+                 equipment={equipment} setEquipment={setEquipment}
+                 quotes={quotes}
+                 auditLogs={auditLogs}
+                 subcontractors={subcontractors}
+                 gedFolders={gedFolders}
+                 snags={snags}
+               />;
       case 'site_manager':
-        return <SiteManagerDashboard currentCompanyId={activeUser.companyId} companies={companies} />;
+        return <SiteManagerDashboard
+                 currentCompanyId={activeUser.companyId}
+                 currentUser={activeUser}
+                 sites={sites}
+                 workers={workers} setWorkers={setWorkers}
+                 equipment={equipment} setEquipment={setEquipment}
+                 deliveries={deliveries} setDeliveries={setDeliveries}
+                 snags={snags} setSnags={setSnags}
+               />;
       case 'worker':
-        return <WorkerMobileView currentCompanyId={activeUser.companyId} currentUser={activeUser} />;
+        return <WorkerMobileView
+                 currentCompanyId={activeUser.companyId}
+                 currentUser={activeUser}
+                 sites={sites}
+                 workers={workers}
+               />;
       default:
         return <div className="text-white">Role not found</div>;
     }

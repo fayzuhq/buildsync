@@ -320,3 +320,14 @@ export const mockInvoicesSaaS = [
   { id: 'inv2', companyName: 'Artisans Réunis', amount: 49, date: '2024-09-05', status: 'Payé' },
   { id: 'inv3', companyName: 'GrosOeuvre SA', amount: 299, date: '2024-08-01', status: 'Rejeté' },
 ];
+
+export const mockSubcontractors = [
+  { id: 'sub1', companyId: 'c1', name: 'Peinture Pro', specialty: 'Peinture & Revêtements', insuranceExpiry: '2025-12-31', contact: 'contact@peinturepro.fr' },
+  { id: 'sub2', companyId: 'c1', name: 'Elec 2000', specialty: 'Électricité Courants Forts/Faibles', insuranceExpiry: '2023-10-15', contact: 'contact@elec2000.com' },
+];
+
+export const mockGedFolders = [
+  { id: 'f1', companyId: 'c1', siteId: 's1', name: "Plans Architecte", files: ["Plan_RDC_V2.pdf", "Coupe_Elevation.pdf"] },
+  { id: 'f2', companyId: 'c1', siteId: 's1', name: "PPSPS / Sécurité", files: ["PPSPS_Signe.pdf"] },
+  { id: 'f3', companyId: 'c1', siteId: 's1', name: "Devis Signés", files: ["Devis_Client_Signe.pdf"] },
+];
