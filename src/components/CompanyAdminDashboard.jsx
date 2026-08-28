@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 export default function CompanyAdminDashboard({
   currentCompanyId, companies, sites, setSites, workers, setWorkers,
   equipment, setEquipment, quotes, setQuotes, auditLogs,
-  subcontractors, setSubcontractors, gedFolders, setGedFolders, snags
+  subcontractors, setSubcontractors, gedFolders, setGedFolders, snags, expenses
 }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddWorker, setShowAddWorker] = useState(false);
@@ -141,6 +141,25 @@ export default function CompanyAdminDashboard({
   const totalBudget = companySites.reduce((sum, s) => sum + s.budget, 0);
   const totalConsumed = companySites.reduce((sum, s) => sum + s.budgetConsumed, 0);
   const budgetRatio = totalBudget > 0 ? Math.round((totalConsumed/totalBudget)*100) : 0;
+
+  const handleExportCSV = () => {
+    let csvContent = "data:text/csv;charset=utf-8,Collaborateur,Heures Modifiées par Chef,Heures Sup (25%),Paniers Repas Validés\n";
+    companyWorkers.forEach(w => {
+      const heuresNormales = Math.min(w.hoursLoggedThisWeek, 35);
+      const heuresSup = Math.max(0, w.hoursLoggedThisWeek - 35);
+      const paniers = Math.ceil(w.hoursLoggedThisWeek / 7);
+      csvContent += `"${w.name}",${w.hoursLoggedThisWeek},${heuresSup},${paniers}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `export_paie_${currentCompanyId}_semaine.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Fichier CSV généré et téléchargé.");
+  };
 
   return (
     <div className="space-y-6">
@@ -513,7 +532,7 @@ export default function CompanyAdminDashboard({
             <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
               <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
                 <h2 className="text-lg font-bold text-white">Export Paie (Temps de travail global)</h2>
-                <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm transition-colors flex items-center">
+                <button onClick={handleExportCSV} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm transition-colors flex items-center">
                    <span>Exporter CSV / Sage</span>
                 </button>
               </div>
@@ -587,8 +606,22 @@ export default function CompanyAdminDashboard({
                      <p className="text-lg font-bold text-white">{selectedSite.managerName}</p>
                   </div>
                   <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 shadow-inner">
-                     <p className="text-sm text-slate-400 uppercase tracking-wider mb-1">Budget Consommé / Alloué</p>
-                     <p className="text-lg font-bold text-white">{selectedSite.budgetConsumed.toLocaleString()} / {selectedSite.budget.toLocaleString()} €</p>
+                     <p className="text-sm text-slate-400 uppercase tracking-wider mb-1">Rentabilité Financière</p>
+                     <p className="text-lg font-bold text-white mb-2">
+                        {(() => {
+                           const siteWorkersLocal = workers.filter(w => w.siteAssigned === selectedSite.id);
+                           const totalLaborHours = siteWorkersLocal.reduce((sum, w) => sum + w.hoursLoggedThisWeek, 0);
+                           const laborCost = totalLaborHours * 35; // Mock 35€/h
+                           const siteExpenses = expenses.filter(e => e.siteId === selectedSite.id).reduce((sum, e) => sum + e.amount, 0);
+                           const margeBrute = selectedSite.budget - laborCost - siteExpenses;
+
+                           return (
+                              <span className={margeBrute >= 0 ? "text-emerald-400" : "text-rose-400"}>
+                                 {margeBrute.toLocaleString()} € (Marge brute)
+                              </span>
+                           );
+                        })()}
+                     </p>
                      <div className="w-full bg-slate-800 rounded-full h-1.5 mt-2">
                        <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${selectedSite.budget > 0 ? (selectedSite.budgetConsumed/selectedSite.budget)*100 : 0}%` }}></div>
                      </div>

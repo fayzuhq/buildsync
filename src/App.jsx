@@ -8,7 +8,7 @@ import LoginPage from './components/LoginPage';
 import {
   mockPlatformSettings, mockCompanies, mockSites, mockWorkers,
   mockEquipment, mockDeliveries, mockSnags, mockQuotes,
-  mockSubcontractors, mockGedFolders, mockAuditLogs
+  mockSubcontractors, mockGedFolders, mockAuditLogs, mockExpenses
 } from './mockData';
 
 function App() {
@@ -27,6 +27,7 @@ function App() {
   const [subcontractors, setSubcontractors] = useState(mockSubcontractors);
   const [gedFolders, setGedFolders] = useState(mockGedFolders);
   const [auditLogs, setAuditLogs] = useState(mockAuditLogs);
+  const [expenses, setExpenses] = useState(mockExpenses);
 
   const handleLogout = () => {
     setCurrentUser(null);
@@ -98,6 +99,7 @@ function App() {
                  subcontractors={subcontractors} setSubcontractors={setSubcontractors}
                  gedFolders={gedFolders} setGedFolders={setGedFolders}
                  snags={snags}
+                 expenses={expenses}
                />;
       case 'site_manager':
         return <SiteManagerDashboard
@@ -108,13 +110,14 @@ function App() {
                  equipment={equipment} setEquipment={setEquipment}
                  deliveries={deliveries} setDeliveries={setDeliveries}
                  snags={snags} setSnags={setSnags}
+                 expenses={expenses} setExpenses={setExpenses}
                />;
       case 'worker':
         return <WorkerMobileView
                  currentCompanyId={activeUser.companyId}
                  currentUser={activeUser}
                  sites={sites}
-                 workers={workers}
+                 workers={workers} setWorkers={setWorkers}
                />;
       default:
         return <div className="text-white">Role not found</div>;

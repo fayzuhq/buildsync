@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function WorkerMobileView({ currentCompanyId, currentUser, sites, workers }) {
+export default function WorkerMobileView({ currentCompanyId, currentUser, sites, workers, setWorkers }) {
   const worker = workers.find(w => w.id === currentUser?.workerId) || workers.find(w => w.companyId === currentCompanyId && w.role === 'Compagnon') || workers.find(w => w.role === 'Compagnon');
   const site = worker ? sites.find(s => s.id === worker.siteAssigned) : null;
 
@@ -37,6 +37,13 @@ export default function WorkerMobileView({ currentCompanyId, currentUser, sites,
 
   const handleStop = () => {
      setShiftState('stopped');
+     const totalHoursWorkedThisShift = secondsElapsed / 3600;
+     const roundedHours = Math.round(totalHoursWorkedThisShift * 100) / 100;
+
+     if (worker && roundedHours > 0) {
+        setWorkers(workers.map(w => w.id === worker.id ? { ...w, hoursLoggedThisWeek: w.hoursLoggedThisWeek + roundedHours } : w));
+     }
+
      const hours = Math.floor(secondsElapsed / 3600);
      const minutes = Math.floor((secondsElapsed % 3600) / 60);
      setShowToast(`Pointage terminé : ${hours}h ${minutes}m enregistrées.`);
