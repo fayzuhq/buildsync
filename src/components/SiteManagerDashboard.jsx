@@ -19,9 +19,6 @@ export default function SiteManagerDashboard({
   const [report, setReport] = useState('');
   const [toastMessage, setToastMessage] = useState('');
 
-  const [showTransferModal, setShowTransferModal] = useState(false);
-  const [selectedEq, setSelectedEq] = useState(null);
-
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [newDelivery, setNewDelivery] = useState({ time: '', description: '' });
 
@@ -41,6 +38,11 @@ export default function SiteManagerDashboard({
     return <div className="p-4 text-white">Aucun chantier assigné pour cette entreprise.</div>;
   }
 
+  const showToast = (msg) => {
+     setToastMessage(msg);
+     setTimeout(() => setToastMessage(''), 5000);
+  };
+
   const handleSubmitReport = (e) => {
     e.preventDefault();
     // Persist local timesheet to global workers state
@@ -55,22 +57,16 @@ export default function SiteManagerDashboard({
        return w;
     });
     setWorkers(updatedWorkers);
-    setToastMessage("Rapport journalier et pointages soumis avec succès !");
+    showToast("Rapport journalier et pointages soumis avec succès !");
     setReport('');
-    setTimeout(() => setToastMessage(''), 5000);
   };
 
-  const handleTransfer = (e) => {
-    e.preventDefault();
-    setToastMessage("Demande de transfert / attribution envoyée.");
-    setShowTransferModal(false);
-    setSelectedEq(null);
-    setTimeout(() => setToastMessage(''), 5000);
-  };
-
-  const openTransfer = (eq) => {
-    setSelectedEq(eq);
-    setShowTransferModal(true);
+  const handleTransferEquipment = (eqId) => {
+    const updatedHeavy = equipment.heavyMachinery.map(eq =>
+       eq.id === eqId ? { ...eq, status: 'En maintenance', assignedSiteId: null } : eq
+    );
+    setEquipment({ ...equipment, heavyMachinery: updatedHeavy });
+    showToast("Équipement signalé en panne et renvoyé au dépôt.");
   };
 
   const handleAddDelivery = (e) => {
@@ -86,6 +82,12 @@ export default function SiteManagerDashboard({
      }]);
      setShowDeliveryModal(false);
      setNewDelivery({ time: '', description: '' });
+     showToast("Bon de livraison ajouté.");
+  };
+
+  const handleSignDelivery = (deliveryId) => {
+     setDeliveries(deliveries.map(d => d.id === deliveryId ? { ...d, signature: true } : d));
+     showToast("Livraison signée électroniquement.");
   };
 
   const handleAddSnag = (e) => {
@@ -103,12 +105,12 @@ export default function SiteManagerDashboard({
      }]);
      setShowSnagModal(false);
      setNewSnag({ description: '', subcontractor: '', deadline: '', photo: null });
+     showToast("Réserve (Punch List) créée.");
   };
 
   const handleCloseSnag = (snagId) => {
      setSnags(snags.map(sn => sn.id === snagId ? { ...sn, status: 'Terminé' } : sn));
-     setToastMessage("Réserve clôturée avec succès.");
-     setTimeout(() => setToastMessage(''), 3000);
+     showToast("Réserve clôturée avec succès.");
   };
 
   const tabs = [
@@ -301,7 +303,7 @@ export default function SiteManagerDashboard({
                          </span>
                       </td>
                       <td className="px-5 py-4 text-right">
-                         <button onClick={() => openTransfer(eq)} className="text-blue-400 hover:text-blue-300 text-sm outline-none">Déclarer panne / Transférer</button>
+                         <button onClick={() => handleTransferEquipment(eq.id)} className="text-blue-400 hover:text-blue-300 text-sm outline-none transition-colors">Déclarer panne / Transférer</button>
                       </td>
                     </tr>
                   ))}
@@ -321,7 +323,6 @@ export default function SiteManagerDashboard({
                   <tr>
                     <th className="px-5 py-3">Équipement / Modèle</th>
                     <th className="px-5 py-3">Assigné à</th>
-                    <th className="px-5 py-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
@@ -329,14 +330,11 @@ export default function SiteManagerDashboard({
                     <tr key={eq.id} className="hover:bg-slate-700/30">
                       <td className="px-5 py-4 font-medium text-white">{eq.name}</td>
                       <td className="px-5 py-4 text-slate-400">
-                        {eq.currentHolderWorkerId ? siteWorkers.find(w=>w.id === eq.currentHolderWorkerId)?.name : 'Libre sur chantier'}
-                      </td>
-                      <td className="px-5 py-4 text-right">
-                         <button onClick={() => openTransfer(eq)} className="text-blue-400 hover:text-blue-300 text-sm outline-none">Attribuer</button>
+                        {eq.currentHolderWorkerId ? workers.find(w=>w.id === eq.currentHolderWorkerId)?.name : 'Libre sur chantier'}
                       </td>
                     </tr>
                   ))}
-                  {siteLightEq.length === 0 && <tr><td colSpan="3" className="p-4 text-center text-slate-500">Aucun outil affecté.</td></tr>}
+                  {siteLightEq.length === 0 && <tr><td colSpan="2" className="p-4 text-center text-slate-500">Aucun outil affecté.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -349,7 +347,7 @@ export default function SiteManagerDashboard({
         <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden mt-4">
           <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
              <h2 className="text-lg font-bold text-white">Bons de Réception (BL)</h2>
-             <button onClick={() => setShowDeliveryModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-3 rounded text-sm">+ Nouvelle Livraison</button>
+             <button onClick={() => setShowDeliveryModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-3 rounded text-sm transition-colors">+ Nouvelle Livraison</button>
           </div>
           <div className="overflow-x-auto">
              <table className="w-full text-left text-slate-300 text-sm">
@@ -369,7 +367,7 @@ export default function SiteManagerDashboard({
                           {d.signature ? (
                             <span className="text-emerald-400 flex items-center">✓ Signé</span>
                           ) : (
-                            <button className="text-blue-400 border border-blue-400/50 rounded px-2 py-1 text-xs hover:bg-blue-900/30">📸 Ajouter BL</button>
+                            <button onClick={() => handleSignDelivery(d.id)} className="text-blue-400 border border-blue-400/50 rounded px-2 py-1 text-xs hover:bg-blue-900/30 transition-colors">📸 Ajouter BL</button>
                           )}
                        </td>
                     </tr>
@@ -385,7 +383,7 @@ export default function SiteManagerDashboard({
         <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden mt-4">
           <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
              <h2 className="text-lg font-bold text-white">Réserves & Contrôle Qualité</h2>
-             <button onClick={() => setShowSnagModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-3 rounded text-sm">+ Créer une réserve</button>
+             <button onClick={() => setShowSnagModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-3 rounded text-sm transition-colors">+ Créer une réserve</button>
           </div>
           <div className="p-5 grid gap-4 grid-cols-1 md:grid-cols-2">
              {siteSnags.map(sn => (
@@ -404,45 +402,13 @@ export default function SiteManagerDashboard({
                      </div>
                    )}
                    <div className="mt-auto flex space-x-2">
-                      <button className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded text-sm border border-slate-600">📸 Photo</button>
+                      <button className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 rounded text-sm border border-slate-600 transition-colors">📸 Photo</button>
                       {sn.status !== 'Terminé' && (
-                        <button onClick={() => handleCloseSnag(sn.id)} className="flex-1 bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-400 py-1.5 rounded text-sm border border-emerald-800">Clôturer</button>
+                        <button onClick={() => handleCloseSnag(sn.id)} className="flex-1 bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-400 py-1.5 rounded text-sm border border-emerald-800 transition-colors">Clôturer</button>
                       )}
                    </div>
                 </div>
              ))}
-          </div>
-        </div>
-      )}
-
-      {/* Modal - Transfer/Assign Equipment */}
-      {showTransferModal && selectedEq && (
-        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
-            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
-              <h3 className="text-lg font-bold text-white">Action sur Matériel</h3>
-              <button onClick={() => setShowTransferModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
-            </div>
-            <form onSubmit={handleTransfer} className="p-5 space-y-4">
-              <div>
-                <p className="text-sm text-slate-400 mb-2">Matériel concerné : <strong className="text-white">{selectedEq.name}</strong></p>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Type d'action</label>
-                <select className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none">
-                  <option>Attribuer à un ouvrier</option>
-                  <option>Signaler en panne / maintenance</option>
-                  <option>Demander transfert vers autre chantier</option>
-                  <option>Retour dépôt</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Détails / Remarques</label>
-                <textarea className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none resize-none h-20"></textarea>
-              </div>
-              <div className="pt-4 flex justify-end space-x-3">
-                <button type="button" onClick={() => setShowTransferModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
-                <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow transition-colors">Valider</button>
-              </div>
-            </form>
           </div>
         </div>
       )}
@@ -496,7 +462,7 @@ export default function SiteManagerDashboard({
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">Joindre une photo du défaut</label>
-                <input type="file" accept="image/*" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-300 file:bg-slate-800 file:text-slate-300 file:border-0 file:rounded file:px-3 file:py-1 file:mr-3 hover:file:bg-slate-700 cursor-pointer" onChange={e => setNewSnag({...newSnag, photo: e.target.files[0]})} />
+                <input type="file" accept="image/*" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-slate-300 file:bg-slate-800 file:text-slate-300 file:border-0 file:rounded file:px-3 file:py-1 file:mr-3 hover:file:bg-slate-700 cursor-pointer outline-none" onChange={e => setNewSnag({...newSnag, photo: e.target.files[0]})} />
               </div>
               <div className="pt-4 flex justify-end space-x-3">
                 <button type="button" onClick={() => setShowSnagModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
