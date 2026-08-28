@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { mockSites, mockWorkers } from '../mockData';
 
-export default function WorkerMobileView({ currentCompanyId, currentUser }) {
-  const worker = mockWorkers.find(w => w.id === currentUser?.workerId) || mockWorkers.find(w => w.companyId === currentCompanyId && w.role === 'Compagnon') || mockWorkers.find(w => w.role === 'Compagnon');
-  const site = worker ? mockSites.find(s => s.id === worker.siteAssigned) : null;
+export default function WorkerMobileView({ currentCompanyId, currentUser, sites, workers }) {
+  const worker = workers.find(w => w.id === currentUser?.workerId) || workers.find(w => w.companyId === currentCompanyId && w.role === 'Compagnon') || workers.find(w => w.role === 'Compagnon');
+  const site = worker ? sites.find(s => s.id === worker.siteAssigned) : null;
 
   const [shiftState, setShiftState] = useState('stopped'); // stopped, active, paused
   const [secondsElapsed, setSecondsElapsed] = useState(0);
@@ -57,6 +56,8 @@ export default function WorkerMobileView({ currentCompanyId, currentUser }) {
      setShowScanner(false);
      setTimeout(() => setShowToast(''), 4000);
   };
+
+  const paniers = Math.ceil(worker.hoursLoggedThisWeek / 7);
 
   return (
     <div className="max-w-md mx-auto bg-slate-900 min-h-[85vh] flex flex-col border border-slate-800 shadow-2xl sm:rounded-3xl overflow-hidden relative">
@@ -162,7 +163,7 @@ export default function WorkerMobileView({ currentCompanyId, currentUser }) {
               <h2 className="text-2xl font-bold text-white mb-6 text-center">Vos Indemnités</h2>
               <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-4 text-center">
                  <p className="text-slate-400 text-sm">Paniers repas validés cette semaine</p>
-                 <p className="text-4xl font-bold text-emerald-400 mt-2">4</p>
+                 <p className="text-4xl font-bold text-emerald-400 mt-2">{paniers}</p>
               </div>
               <p className="text-sm text-slate-400 text-center">Vos paniers sont automatiquement déclarés par votre Chef de chantier lors des pointages journaliers.</p>
            </div>

@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { mockSites, mockWorkers, mockAuditLogs, mockEquipment, mockQuotes } from '../mockData';
 
-export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
+export default function CompanyAdminDashboard({
+  currentCompanyId, companies, sites, setSites, workers, setWorkers,
+  equipment, setEquipment, quotes, auditLogs, subcontractors, gedFolders, snags
+}) {
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddWorker, setShowAddWorker] = useState(false);
   const [showSiteModal, setShowSiteModal] = useState(false);
   const [showNewSiteModal, setShowNewSiteModal] = useState(false);
   const [selectedSite, setSelectedSite] = useState(null);
+
+  // Modals for Site details
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [showPunchListModal, setShowPunchListModal] = useState(false);
 
@@ -14,16 +18,16 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
   const [newSite, setNewSite] = useState({ name: '', address: '', managerName: '', budget: '' });
   const [toastMessage, setToastMessage] = useState('');
 
-  // Keep local copies for simulation
-  const [localSites, setLocalSites] = useState(mockSites.filter(s => s.companyId === currentCompanyId));
-
+  // Filtering data for active tenant
   const company = companies.find(c => c.id === currentCompanyId);
-  const companyWorkers = mockWorkers.filter(w => w.companyId === currentCompanyId);
-  const companyLogs = mockAuditLogs.filter(log => log.companyId === currentCompanyId);
-  const companyQuotes = mockQuotes.filter(q => q.companyId === currentCompanyId);
+  const companySites = sites.filter(s => s.companyId === currentCompanyId);
+  const companyWorkers = workers.filter(w => w.companyId === currentCompanyId);
+  const companyLogs = auditLogs.filter(log => log.companyId === currentCompanyId);
+  const companyQuotes = quotes.filter(q => q.companyId === currentCompanyId);
+  const companySubcontractors = subcontractors.filter(s => s.companyId === currentCompanyId);
 
-  const companyHeavyEq = mockEquipment.heavyMachinery.filter(e => e.companyId === currentCompanyId);
-  const companyLightEq = mockEquipment.lightTools.filter(e => e.companyId === currentCompanyId);
+  const companyHeavyEq = equipment.heavyMachinery.filter(e => e.companyId === currentCompanyId);
+  const companyLightEq = equipment.lightTools.filter(e => e.companyId === currentCompanyId);
 
   if (!company) {
     return <div className="text-white p-4">Veuillez sélectionner une entreprise.</div>;
@@ -31,14 +35,22 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
 
   const handleAddWorker = (e) => {
     e.preventDefault();
-    setToastMessage(`Identifiants et lien temporaire envoyés par SMS au ${newWorker.phone}`);
+    setWorkers([...workers, {
+      id: `w_new_${Date.now()}`,
+      companyId: currentCompanyId,
+      ...newWorker,
+      siteAssigned: null,
+      medicalExpiry: '2025-12-31',
+      hoursLoggedThisWeek: 0
+    }]);
+    setToastMessage(`Identifiants envoyés par SMS au ${newWorker.phone}`);
     setShowAddWorker(false);
     setTimeout(() => setToastMessage(''), 5000);
   };
 
   const handleAddSite = (e) => {
     e.preventDefault();
-    setLocalSites([...localSites, {
+    setSites([...sites, {
       id: `s_new_${Date.now()}`,
       companyId: currentCompanyId,
       name: newSite.name,
@@ -63,13 +75,14 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
     { id: 'overview', label: "Vue d'ensemble & Chantiers" },
     { id: 'planning', label: "Planning & Équipes" },
     { id: 'billing', label: "Devis & Facturation" },
+    { id: 'subcontractors', label: "Sous-traitance & Achats" },
     { id: 'equipment', label: "Parc Matériel & Engins" },
     { id: 'staff', label: "Collaborateurs" },
     { id: 'payroll', label: "Export Paie & Audit Logs" }
   ];
 
-  const totalBudget = localSites.reduce((sum, s) => sum + s.budget, 0);
-  const totalConsumed = localSites.reduce((sum, s) => sum + s.budgetConsumed, 0);
+  const totalBudget = companySites.reduce((sum, s) => sum + s.budget, 0);
+  const totalConsumed = companySites.reduce((sum, s) => sum + s.budgetConsumed, 0);
   const budgetRatio = totalBudget > 0 ? Math.round((totalConsumed/totalBudget)*100) : 0;
 
   return (
@@ -90,7 +103,7 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
         </div>
         <div className="bg-slate-800/90 p-5 rounded-xl border border-slate-700 shadow">
           <h3 className="text-slate-400 text-sm font-semibold uppercase tracking-wider">Chantiers Actifs</h3>
-          <p className="text-3xl font-bold text-white mt-1">{localSites.length}</p>
+          <p className="text-3xl font-bold text-white mt-1">{companySites.length}</p>
         </div>
         <div className="bg-slate-800/90 p-5 rounded-xl border border-slate-700 shadow">
           <h3 className="text-slate-400 text-sm font-semibold uppercase tracking-wider">Total Effectif</h3>
@@ -132,7 +145,7 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
               </button>
             </div>
             <ul className="divide-y divide-slate-700/50">
-              {localSites.map(site => (
+              {companySites.map(site => (
                 <li key={site.id} onClick={() => openSiteModal(site)} className="p-5 hover:bg-slate-700/30 transition-colors cursor-pointer block sm:flex sm:justify-between sm:items-center space-y-4 sm:space-y-0">
                   <div className="sm:w-1/3">
                     <h4 className="font-bold text-slate-100 text-lg">{site.name}</h4>
@@ -151,9 +164,9 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
                   </div>
                   <div className="sm:w-1/4 text-right">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold border inline-block ${
-                      site.status === 'En cours' ? 'bg-blue-900/30 text-blue-400 border-blue-800' :
+                      site.status === 'En cours' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' :
                       site.status === 'En retard' ? 'bg-amber-900/30 text-amber-400 border-amber-800' :
-                      'bg-emerald-900/30 text-emerald-400 border-emerald-800'
+                      'bg-blue-900/30 text-blue-400 border-blue-800'
                     }`}>
                       {site.status}
                     </span>
@@ -167,10 +180,13 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
         {/* TAB 2: PLANNING */}
         {activeTab === 'planning' && (
           <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow p-6 min-h-[400px]">
-             <h2 className="text-lg font-bold text-white mb-4">Planning & Équipes (Semaine)</h2>
+             <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold text-white">Planning & Équipes (Semaine 42)</h2>
+                <button className="bg-slate-700 hover:bg-slate-600 text-white text-sm py-1.5 px-3 rounded shadow">Gérer les affectations</button>
+             </div>
              <div className="overflow-x-auto">
                <div className="min-w-[800px]">
-                 <div className="grid grid-cols-6 gap-2 text-center text-sm font-semibold text-slate-400 mb-2">
+                 <div className="grid grid-cols-6 gap-2 text-center text-sm font-semibold text-slate-400 mb-2 border-b border-slate-700 pb-2">
                     <div className="text-left">Ressource</div>
                     <div>Lun</div>
                     <div>Mar</div>
@@ -179,25 +195,30 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
                     <div>Ven</div>
                  </div>
                  <div className="space-y-2">
-                    {companyWorkers.map(w => (
-                       <div key={w.id} className="grid grid-cols-6 gap-2 items-center text-sm">
-                          <div className="text-white font-medium">{w.name} <span className="block text-xs text-slate-500">{w.role}</span></div>
-                          <div className="col-span-3 bg-blue-900/50 border border-blue-800 text-blue-300 rounded p-1 text-xs text-center truncate">
-                            {localSites.find(s=>s.id === w.siteAssigned)?.name || 'Atelier'}
+                    {companyWorkers.map(w => {
+                       const siteName = w.siteAssigned ? companySites.find(s=>s.id === w.siteAssigned)?.name : 'Atelier / Dépôt';
+                       return (
+                       <div key={w.id} className="grid grid-cols-6 gap-2 items-center text-sm p-1 hover:bg-slate-800/50 rounded">
+                          <div className="text-white font-medium truncate">{w.name} <span className="block text-xs text-slate-500">{w.role}</span></div>
+                          <div className="col-span-3 bg-blue-900/50 border border-blue-800 text-blue-300 rounded p-2 text-xs text-center truncate shadow-sm cursor-pointer hover:bg-blue-800/50">
+                            {siteName}
                           </div>
-                          <div className="bg-amber-900/50 border border-amber-800 text-amber-300 rounded p-1 text-xs text-center">Intempérie</div>
-                          <div className="bg-slate-700 rounded p-1 text-xs text-center text-slate-400">Repos</div>
+                          <div className="bg-amber-900/50 border border-amber-800 text-amber-300 rounded p-2 text-xs text-center shadow-sm">Formation</div>
+                          <div className="bg-slate-700 rounded p-2 text-xs text-center text-slate-400">Repos</div>
                        </div>
-                    ))}
+                    )})}
                     <div className="my-4 border-b border-slate-700"></div>
-                    {companyHeavyEq.map(eq => (
-                       <div key={eq.id} className="grid grid-cols-6 gap-2 items-center text-sm">
-                          <div className="text-white font-medium">{eq.name}</div>
-                          <div className="col-span-5 bg-emerald-900/40 border border-emerald-800 text-emerald-300 rounded p-1 text-xs text-center truncate">
-                             {localSites.find(s=>s.id === eq.assignedSiteId)?.name || 'Dépôt'}
+                    <h3 className="text-slate-400 font-bold mb-2 uppercase text-xs">Gros Engins</h3>
+                    {companyHeavyEq.map(eq => {
+                       const siteName = eq.assignedSiteId ? companySites.find(s=>s.id === eq.assignedSiteId)?.name : 'Dépôt Central';
+                       return (
+                       <div key={eq.id} className="grid grid-cols-6 gap-2 items-center text-sm p-1 hover:bg-slate-800/50 rounded">
+                          <div className="text-white font-medium truncate">{eq.name}</div>
+                          <div className="col-span-5 bg-emerald-900/40 border border-emerald-800 text-emerald-300 rounded p-2 text-xs text-center truncate shadow-sm cursor-pointer hover:bg-emerald-800/50">
+                             {siteName}
                           </div>
                        </div>
-                    ))}
+                    )})}
                  </div>
                </div>
              </div>
@@ -207,51 +228,102 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
         {/* TAB 3: BILLING / QUOTES */}
         {activeTab === 'billing' && (
           <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
-            <div className="p-5 border-b border-slate-700 bg-slate-900/50">
-              <h2 className="text-lg font-bold text-white">Suivi des Devis & Situations</h2>
+            <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-white">Suivi des Devis & Facturation BTP</h2>
+              <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm">+ Nouvelle Situation</button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-slate-300 text-sm">
                 <thead className="bg-slate-900/80 text-slate-400">
                   <tr>
-                    <th className="px-5 py-3">Réf</th>
+                    <th className="px-5 py-3">Réf Devis</th>
                     <th className="px-5 py-3">Client (Chantier)</th>
-                    <th className="px-5 py-3">Montant HT</th>
-                    <th className="px-5 py-3">Situation Avancement</th>
-                    <th className="px-5 py-3">Paiement</th>
+                    <th className="px-5 py-3 text-right">Montant HT</th>
+                    <th className="px-5 py-3 text-right">Acompte</th>
+                    <th className="px-5 py-3 text-center">Avancement</th>
+                    <th className="px-5 py-3 text-right">Retenue (5%)</th>
+                    <th className="px-5 py-3 text-center">Paiement</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
-                  {companyQuotes.map(quote => (
+                  {companyQuotes.map(quote => {
+                     const acompte = quote.amount * 0.3;
+                     const retenue = quote.amount * 0.05;
+                     return (
                     <tr key={quote.id} className="hover:bg-slate-700/30">
                       <td className="px-5 py-4 font-mono text-slate-500">{quote.id}</td>
                       <td className="px-5 py-4 font-medium text-slate-200">
                          {quote.client} <br/>
-                         <span className="text-xs text-slate-500">{localSites.find(s=>s.id === quote.siteId)?.name}</span>
+                         <span className="text-xs text-slate-500">{companySites.find(s=>s.id === quote.siteId)?.name}</span>
                       </td>
-                      <td className="px-5 py-4 font-mono">{quote.amount.toLocaleString()} €</td>
+                      <td className="px-5 py-4 font-mono text-right">{quote.amount.toLocaleString()} €</td>
+                      <td className="px-5 py-4 text-slate-400 text-right">{acompte.toLocaleString()} €</td>
                       <td className="px-5 py-4">
-                         <div className="flex items-center space-x-2">
-                           <div className="flex-1 bg-slate-900 rounded-full h-2 w-24">
+                         <div className="flex items-center space-x-2 justify-center">
+                           <div className="flex-1 bg-slate-900 rounded-full h-2 w-16">
                               <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${quote.progressBilling}%` }}></div>
                            </div>
                            <span className="text-xs font-bold text-blue-400">{quote.progressBilling}%</span>
                          </div>
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-4 text-amber-400/80 text-right">-{retenue.toLocaleString()} €</td>
+                      <td className="px-5 py-4 text-center">
                          <span className={`px-2 py-1 rounded text-xs font-semibold border ${quote.paymentStatus === 'Payé' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' : quote.paymentStatus === 'Facturé' ? 'bg-blue-900/30 text-blue-400 border-blue-800' : 'bg-red-900/30 text-red-400 border-red-800'}`}>
                            {quote.paymentStatus}
                          </span>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
-        {/* TAB 4: EQUIPMENT */}
+        {/* TAB 4: SUBCONTRACTORS */}
+        {activeTab === 'subcontractors' && (
+          <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
+            <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-white">Sous-traitance & Achats</h2>
+              <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm">+ Ajouter un sous-traitant</button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-slate-300 text-sm">
+                <thead className="bg-slate-900/80 text-slate-400">
+                  <tr>
+                    <th className="px-5 py-3">Sous-traitant</th>
+                    <th className="px-5 py-3">Spécialité</th>
+                    <th className="px-5 py-3">Contact</th>
+                    <th className="px-5 py-3">Assurance Décennale</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700/50">
+                  {companySubcontractors.map(sub => {
+                     const isExpired = new Date(sub.insuranceExpiry) < new Date();
+                     return (
+                    <tr key={sub.id} className="hover:bg-slate-700/30">
+                      <td className="px-5 py-4 font-medium text-white">{sub.name}</td>
+                      <td className="px-5 py-4 text-slate-400">{sub.specialty}</td>
+                      <td className="px-5 py-4 text-slate-400">{sub.contact}</td>
+                      <td className="px-5 py-4">
+                         <div className="flex items-center space-x-2">
+                            <span>{sub.insuranceExpiry}</span>
+                            {isExpired ? (
+                               <span className="bg-red-900/30 text-red-400 border border-red-800 text-xs px-2 py-0.5 rounded font-bold">Expirée</span>
+                            ) : (
+                               <span className="text-emerald-400 text-xs">✓ Valide</span>
+                            )}
+                         </div>
+                      </td>
+                    </tr>
+                  )})}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: EQUIPMENT */}
         {activeTab === 'equipment' && (
           <div className="space-y-6">
              <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
@@ -275,7 +347,7 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
                         <td className="px-5 py-3 font-medium text-white">{eq.name}</td>
                         <td className="px-5 py-3 text-slate-400">{eq.serialNumber}</td>
                         <td className="px-5 py-3 text-slate-400">
-                          {eq.assignedSiteId ? localSites.find(s=>s.id === eq.assignedSiteId)?.name : 'Dépôt Central'}
+                          {eq.assignedSiteId ? companySites.find(s=>s.id === eq.assignedSiteId)?.name : 'Dépôt Central'}
                         </td>
                         <td className="px-5 py-3">
                            <span className={`px-2 py-1 rounded text-xs font-semibold border ${eq.status === 'En service' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' : eq.status === 'Disponible' ? 'bg-blue-900/30 text-blue-400 border-blue-800' : 'bg-red-900/30 text-red-400 border-red-800'}`}>
@@ -326,7 +398,7 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
           </div>
         )}
 
-        {/* TAB 5: STAFF */}
+        {/* TAB 6: STAFF */}
         {activeTab === 'staff' && (
           <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
             <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
@@ -365,12 +437,12 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
           </div>
         )}
 
-        {/* TAB 6: PAYROLL & LOGS */}
+        {/* TAB 7: PAYROLL & LOGS */}
         {activeTab === 'payroll' && (
           <div className="space-y-6">
             <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
               <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
-                <h2 className="text-lg font-bold text-white">Export Paie (Semaine en cours)</h2>
+                <h2 className="text-lg font-bold text-white">Export Paie (Temps de travail global)</h2>
                 <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm transition-colors flex items-center">
                    <span>Exporter CSV / Sage</span>
                 </button>
@@ -380,9 +452,9 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
                   <thead className="bg-slate-900/50 text-slate-400">
                     <tr>
                       <th className="p-3 border-b border-slate-700">Collaborateur</th>
-                      <th className="p-3 border-b border-slate-700">Heures Normales</th>
+                      <th className="p-3 border-b border-slate-700">Heures Modifiées par Chef</th>
                       <th className="p-3 border-b border-slate-700">Heures Sup (25%)</th>
-                      <th className="p-3 border-b border-slate-700">Paniers Repas</th>
+                      <th className="p-3 border-b border-slate-700">Paniers Repas Validés</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -391,11 +463,11 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
                        const heuresSup = Math.max(0, w.hoursLoggedThisWeek - 35);
                        const paniers = Math.ceil(w.hoursLoggedThisWeek / 7);
                        return (
-                       <tr key={w.id} className="border-b border-slate-700 last:border-0">
+                       <tr key={w.id} className="border-b border-slate-700 last:border-0 hover:bg-slate-800/50 transition-colors">
                          <td className="p-3 font-medium text-white">{w.name}</td>
-                         <td className="p-3">{heuresNormales} h</td>
-                         <td className="p-3 text-amber-400">{heuresSup} h</td>
-                         <td className="p-3">{paniers}</td>
+                         <td className="p-3 font-mono">{w.hoursLoggedThisWeek} h (base: {heuresNormales}h)</td>
+                         <td className="p-3 text-amber-400 font-mono">{heuresSup} h</td>
+                         <td className="p-3 font-mono text-emerald-400">{paniers} jours</td>
                        </tr>
                      )})}
                   </tbody>
@@ -430,7 +502,7 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
       {/* Modal - Fiche Chantier 360° */}
       {showSiteModal && selectedSite && (
         <div className="fixed inset-0 bg-slate-950/90 flex justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-4xl my-auto">
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-5xl my-auto">
             <div className="p-6 border-b border-slate-700 flex justify-between items-start bg-slate-900 sticky top-0 z-10">
               <div>
                  <h2 className="text-2xl font-bold text-white">Fiche Chantier 360° : {selectedSite.name}</h2>
@@ -440,39 +512,64 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
             </div>
             <div className="p-6 space-y-6">
                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-slate-900 p-4 rounded-lg border border-slate-700">
-                     <p className="text-sm text-slate-400 uppercase">Chef de chantier</p>
+                  <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 shadow-inner">
+                     <p className="text-sm text-slate-400 uppercase tracking-wider mb-1">Chef de chantier</p>
                      <p className="text-lg font-bold text-white">{selectedSite.managerName}</p>
                   </div>
-                  <div className="bg-slate-900 p-4 rounded-lg border border-slate-700">
-                     <p className="text-sm text-slate-400 uppercase">Budget / Rentabilité</p>
+                  <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 shadow-inner">
+                     <p className="text-sm text-slate-400 uppercase tracking-wider mb-1">Budget Consommé / Alloué</p>
                      <p className="text-lg font-bold text-white">{selectedSite.budgetConsumed.toLocaleString()} / {selectedSite.budget.toLocaleString()} €</p>
+                     <div className="w-full bg-slate-800 rounded-full h-1.5 mt-2">
+                       <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${selectedSite.budget > 0 ? (selectedSite.budgetConsumed/selectedSite.budget)*100 : 0}%` }}></div>
+                     </div>
                   </div>
-                  <div className="bg-slate-900 p-4 rounded-lg border border-slate-700">
-                     <p className="text-sm text-slate-400 uppercase">Statut global</p>
-                     <p className="text-lg font-bold text-blue-400">{selectedSite.status}</p>
+                  <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 shadow-inner flex flex-col justify-center items-start">
+                     <p className="text-sm text-slate-400 uppercase tracking-wider mb-1">Statut global</p>
+                     <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${
+                      selectedSite.status === 'En cours' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' :
+                      selectedSite.status === 'En retard' ? 'bg-amber-900/30 text-amber-400 border-amber-800' :
+                      'bg-blue-900/30 text-blue-400 border-blue-800'
+                    }`}>
+                      {selectedSite.status}
+                    </span>
                   </div>
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                 {/* GED Folder UI */}
                  <div className="space-y-4">
-                    <h3 className="text-lg font-bold text-slate-200 border-b border-slate-700 pb-2">Document & GED</h3>
-                    <ul className="space-y-2 text-sm">
-                       <li className="flex justify-between items-center bg-slate-900/50 p-2 rounded border border-slate-700/50">
-                          <span className="text-slate-300">📄 Permis de construire.pdf</span>
-                          <button onClick={() => setShowPdfModal(true)} className="text-blue-400 hover:underline">Voir</button>
-                       </li>
-                       <li className="flex justify-between items-center bg-slate-900/50 p-2 rounded border border-slate-700/50">
-                          <span className="text-slate-300">📄 Plans architecte V2.pdf</span>
-                          <button onClick={() => setShowPdfModal(true)} className="text-blue-400 hover:underline">Voir</button>
-                       </li>
-                    </ul>
+                    <h3 className="text-lg font-bold text-slate-200 border-b border-slate-700 pb-2 flex items-center"><span className="mr-2">📂</span> GED & Documents</h3>
+                    <div className="space-y-3">
+                       {gedFolders.filter(f => f.siteId === selectedSite.id).map(folder => (
+                          <div key={folder.id} className="bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
+                             <div className="bg-slate-800/80 p-3 text-sm font-bold text-slate-300 border-b border-slate-700 flex items-center">
+                                <span className="mr-2">📁</span> {folder.name}
+                             </div>
+                             <ul className="p-2 space-y-1">
+                                {folder.files.map((file, idx) => (
+                                   <li key={idx} className="flex justify-between items-center text-sm p-2 hover:bg-slate-800 rounded transition-colors">
+                                      <span className="text-slate-400 flex items-center"><span className="mr-2">📄</span> {file}</span>
+                                      <button onClick={() => setShowPdfModal(true)} className="text-blue-400 hover:text-blue-300">Ouvrir</button>
+                                   </li>
+                                ))}
+                             </ul>
+                          </div>
+                       ))}
+                       {gedFolders.filter(f => f.siteId === selectedSite.id).length === 0 && (
+                          <p className="text-slate-500 text-sm">Aucun dossier GED pour ce chantier.</p>
+                       )}
+                    </div>
                  </div>
-                 <div className="space-y-4">
-                    <h3 className="text-lg font-bold text-slate-200 border-b border-slate-700 pb-2">Réserves & Signature Client</h3>
-                    <div className="bg-slate-900/50 p-4 rounded text-center border border-slate-700">
-                       <p className="text-slate-400 mb-2">2 réserves ouvertes sur ce chantier.</p>
-                       <button onClick={() => setShowPunchListModal(true)} className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded text-sm transition-colors">Consulter la Punch List</button>
+
+                 <div className="space-y-4 flex flex-col">
+                    <h3 className="text-lg font-bold text-slate-200 border-b border-slate-700 pb-2">Réserves & Qualité (Punch List)</h3>
+                    <div className="bg-slate-900 p-6 rounded-xl text-center border border-slate-700 flex-grow flex flex-col justify-center items-center">
+                       <span className="text-4xl mb-3">📋</span>
+                       <p className="text-slate-300 font-medium mb-1">
+                          {snags.filter(sn => sn.siteId === selectedSite.id && sn.status !== 'Terminé').length} réserves ouvertes
+                       </p>
+                       <p className="text-slate-500 text-sm mb-4">Gérez les défauts et la levée des réserves avant la livraison finale client.</p>
+                       <button onClick={() => setShowPunchListModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2 rounded-lg transition-colors shadow">Consulter la Punch List</button>
                     </div>
                  </div>
                </div>
@@ -484,30 +581,45 @@ export default function CompanyAdminDashboard({ currentCompanyId, companies }) {
       {/* PDF Modal */}
       {showPdfModal && (
         <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-[60] p-4">
-           <div className="bg-slate-800 border border-slate-700 p-4 rounded-lg shadow-xl max-w-2xl w-full">
+           <div className="bg-slate-800 border border-slate-700 p-4 rounded-lg shadow-xl max-w-3xl w-full">
               <div className="flex justify-between items-center mb-4">
-                 <h3 className="text-white font-bold">Aperçu PDF</h3>
-                 <button onClick={() => setShowPdfModal(false)} className="text-slate-400 hover:text-white">✕</button>
+                 <h3 className="text-white font-bold">Visionneuse PDF / Plans</h3>
+                 <button onClick={() => setShowPdfModal(false)} className="text-slate-400 hover:text-white text-2xl font-bold">✕</button>
               </div>
-              <div className="bg-slate-900 h-96 flex items-center justify-center border border-slate-700 rounded text-slate-500">
-                 Visualiseur PDF Mock
+              <div className="bg-slate-900 h-[600px] flex flex-col items-center justify-center border border-slate-700 rounded text-slate-500 shadow-inner">
+                 <span className="text-6xl mb-4">📐</span>
+                 <p className="text-lg font-medium text-slate-400">Le plan d'architecte s'affiche ici.</p>
+                 <p className="text-sm">Prend en charge le zoom, les annotations, et la mesure de cotes.</p>
               </div>
            </div>
         </div>
       )}
 
       {/* Punch List Modal */}
-      {showPunchListModal && (
+      {showPunchListModal && selectedSite && (
         <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-[60] p-4">
-           <div className="bg-slate-800 border border-slate-700 p-6 rounded-lg shadow-xl max-w-lg w-full">
-              <div className="flex justify-between items-center mb-4">
-                 <h3 className="text-white font-bold">Punch List (Mock)</h3>
-                 <button onClick={() => setShowPunchListModal(false)} className="text-slate-400 hover:text-white">✕</button>
+           <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[80vh]">
+              <div className="flex justify-between items-center p-5 bg-slate-900 border-b border-slate-700">
+                 <h3 className="text-white font-bold text-lg">Punch List : {selectedSite.name}</h3>
+                 <button onClick={() => setShowPunchListModal(false)} className="text-slate-400 hover:text-white text-2xl font-bold">✕</button>
               </div>
-              <ul className="space-y-3">
-                 <li className="bg-slate-900 p-3 rounded border border-slate-700 text-slate-300 text-sm">1. Reprise peinture mur nord (En cours)</li>
-                 <li className="bg-slate-900 p-3 rounded border border-slate-700 text-slate-300 text-sm">2. Câble apparent tableau elec (Ouvert)</li>
-              </ul>
+              <div className="p-5 overflow-y-auto space-y-4">
+                 {snags.filter(sn => sn.siteId === selectedSite.id).map(sn => (
+                    <div key={sn.id} className="bg-slate-900 border border-slate-700 rounded-lg p-4 flex flex-col">
+                       <div className="flex justify-between items-start mb-2">
+                          <span className={`px-2 py-0.5 rounded text-xs font-bold border ${sn.status === 'Ouvert' ? 'bg-red-900/30 text-red-400 border-red-800' : sn.status === 'En cours' ? 'bg-blue-900/30 text-blue-400 border-blue-800' : 'bg-emerald-900/30 text-emerald-400 border-emerald-800'}`}>
+                             {sn.status}
+                          </span>
+                          <span className="text-xs text-slate-500">Échéance: {sn.deadline}</span>
+                       </div>
+                       <p className="text-white font-medium mb-1">{sn.description}</p>
+                       <p className="text-sm text-slate-400">Sous-traitant : <span className="text-slate-300 font-semibold">{sn.subcontractor}</span></p>
+                    </div>
+                 ))}
+                 {snags.filter(sn => sn.siteId === selectedSite.id).length === 0 && (
+                    <p className="text-slate-500 text-center py-8">Aucune réserve signalée sur ce chantier.</p>
+                 )}
+              </div>
            </div>
         </div>
       )}

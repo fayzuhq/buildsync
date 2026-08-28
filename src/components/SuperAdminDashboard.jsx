@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { mockStats, mockAuditLogs, mockInvoicesSaaS } from '../mockData';
+import { mockStats, mockInvoicesSaaS } from '../mockData';
 
-export default function SuperAdminDashboard({ setImpersonatedUser, globalSettings, setGlobalSettings, companies, setCompanies }) {
+export default function SuperAdminDashboard({ setImpersonatedUser, globalSettings, setGlobalSettings, companies, setCompanies, auditLogs }) {
   const [activeTab, setActiveTab] = useState('entreprises');
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showFeatureModal, setShowFeatureModal] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [logCompanyFilter, setLogCompanyFilter] = useState('All');
+  const [toastMessage, setToastMessage] = useState('');
 
   // Form state for new company
   const [newCompany, setNewCompany] = useState({
@@ -16,11 +17,17 @@ export default function SuperAdminDashboard({ setImpersonatedUser, globalSetting
 
   const [bannerInput, setBannerInput] = useState(globalSettings.broadcastBanner);
 
+  const [pricing, setPricing] = useState({
+    Starter: { price: 49, maxUsers: 5, maxSites: 3 },
+    Pro: { price: 299, maxUsers: 20, maxSites: 10 },
+    Enterprise: { price: 999, maxUsers: 999, maxSites: 999 }
+  });
+
   const filteredCompanies = companies.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.siren.includes(searchTerm)
   );
 
-  const filteredLogs = mockAuditLogs.filter(log => logCompanyFilter === 'All' || log.companyId === logCompanyFilter);
+  const filteredLogs = auditLogs.filter(log => logCompanyFilter === 'All' || log.companyId === logCompanyFilter);
 
   const handleAddCompany = (e) => {
     e.preventDefault();
@@ -54,7 +61,8 @@ export default function SuperAdminDashboard({ setImpersonatedUser, globalSetting
   };
 
   const handleSavePricing = () => {
-    alert("Matrice des forfaits mise à jour.");
+    setToastMessage("Matrice des forfaits mise à jour avec succès.");
+    setTimeout(() => setToastMessage(''), 4000);
   };
 
   const handleSaveFeatures = (e) => {
@@ -81,6 +89,13 @@ export default function SuperAdminDashboard({ setImpersonatedUser, globalSetting
 
   return (
     <div className="space-y-6">
+      {toastMessage && (
+        <div className="fixed top-4 right-4 bg-emerald-600 text-white px-6 py-3 rounded-xl shadow-2xl z-50 flex items-center space-x-2 animate-bounce">
+          <span>✓</span>
+          <span className="font-medium">{toastMessage}</span>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
         <div>
            <h1 className="text-2xl font-bold text-slate-100">Console Super Administrateur</h1>
@@ -209,21 +224,36 @@ export default function SuperAdminDashboard({ setImpersonatedUser, globalSetting
           <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow p-6">
              <h2 className="text-lg font-bold text-white mb-4">Matrice des forfaits</h2>
              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {['Starter', 'Pro', 'Enterprise'].map((plan, idx) => (
+                {['Starter', 'Pro', 'Enterprise'].map((plan) => (
                   <div key={plan} className="bg-slate-900/50 border border-slate-700 rounded-lg p-5">
                     <h3 className="text-xl font-bold text-blue-400 mb-2">{plan}</h3>
                     <div className="space-y-4 mt-4">
                       <div>
                          <label className="text-xs text-slate-400 uppercase">Prix mensuel (€)</label>
-                         <input type="number" defaultValue={[49, 299, 999][idx]} className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white mt-1" />
+                         <input
+                           type="number"
+                           value={pricing[plan].price}
+                           onChange={(e) => setPricing({...pricing, [plan]: {...pricing[plan], price: parseInt(e.target.value)}})}
+                           className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white mt-1 outline-none focus:border-blue-500"
+                         />
                       </div>
                       <div>
                          <label className="text-xs text-slate-400 uppercase">Max Utilisateurs</label>
-                         <input type="number" defaultValue={[5, 20, 999][idx]} className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white mt-1" />
+                         <input
+                           type="number"
+                           value={pricing[plan].maxUsers}
+                           onChange={(e) => setPricing({...pricing, [plan]: {...pricing[plan], maxUsers: parseInt(e.target.value)}})}
+                           className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white mt-1 outline-none focus:border-blue-500"
+                         />
                       </div>
                       <div>
                          <label className="text-xs text-slate-400 uppercase">Max Chantiers</label>
-                         <input type="number" defaultValue={[3, 10, 999][idx]} className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white mt-1" />
+                         <input
+                           type="number"
+                           value={pricing[plan].maxSites}
+                           onChange={(e) => setPricing({...pricing, [plan]: {...pricing[plan], maxSites: parseInt(e.target.value)}})}
+                           className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white mt-1 outline-none focus:border-blue-500"
+                         />
                       </div>
                       <button onClick={handleSavePricing} className="w-full bg-slate-700 hover:bg-slate-600 text-white rounded py-2 text-sm transition-colors mt-2">Mettre à jour</button>
                     </div>
