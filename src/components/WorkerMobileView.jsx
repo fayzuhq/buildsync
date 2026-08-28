@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function WorkerMobileView({ currentCompanyId, currentUser, sites, workers, setWorkers }) {
+export default function WorkerMobileView({ currentCompanyId, currentUser, sites, workers, setWorkers, leaveRequests, setLeaveRequests }) {
   const worker = workers.find(w => w.id === currentUser?.workerId) || workers.find(w => w.companyId === currentCompanyId && w.role === 'Compagnon') || workers.find(w => w.role === 'Compagnon');
   const site = worker ? sites.find(s => s.id === worker.siteAssigned) : null;
 
@@ -11,7 +11,14 @@ export default function WorkerMobileView({ currentCompanyId, currentUser, sites,
   const [showMeals, setShowMeals] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [showSafety, setShowSafety] = useState(false);
-  const [showToast, setShowToast] = useState('');
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+
+  const [toastMessage, setToastMessage] = useState('');
+
+  // Anti-fraud GPS Simulation
+  const [gpsStatus, setGpsStatus] = useState('invalid'); // checking, valid, invalid
+
+  const [newLeave, setNewLeave] = useState({ startDate: '', endDate: '', type: 'Congés Payés' });
 
   useEffect(() => {
     let interval = null;
@@ -27,8 +34,24 @@ export default function WorkerMobileView({ currentCompanyId, currentUser, sites,
     return <div className="p-4 text-center text-slate-400 mt-10">Aucune affectation trouvée.</div>;
   }
 
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 4000);
+  };
+
+  const handleStartCheck = () => {
+    setGpsStatus('checking');
+    setTimeout(() => {
+      // For demonstration, it just switches to valid automatically after checking unless toggled manually.
+      // In reality, this would query navigator.geolocation and verify distance to site.lat/lng.
+      setGpsStatus('valid');
+    }, 2000);
+  };
+
   const handleStart = () => {
-     setShiftState('active');
+     if (gpsStatus === 'valid') {
+       setShiftState('active');
+     }
   };
 
   const handlePause = () => {
@@ -46,9 +69,9 @@ export default function WorkerMobileView({ currentCompanyId, currentUser, sites,
 
      const hours = Math.floor(secondsElapsed / 3600);
      const minutes = Math.floor((secondsElapsed % 3600) / 60);
-     setShowToast(`Pointage terminé : ${hours}h ${minutes}m enregistrées.`);
-     setTimeout(() => setShowToast(''), 4000);
+     showToast(`Pointage terminé : ${hours}h ${minutes}m enregistrées.`);
      setSecondsElapsed(0);
+     setGpsStatus('invalid'); // reset for next shift
   };
 
   const formatTime = (totalSeconds) => {
@@ -59,9 +82,24 @@ export default function WorkerMobileView({ currentCompanyId, currentUser, sites,
   };
 
   const handleScanTool = () => {
-     setShowToast("Outil Hilti TE 60 scanné et assigné à votre profil.");
+     showToast("Outil Hilti TE 60 scanné et assigné à votre profil.");
      setShowScanner(false);
-     setTimeout(() => setShowToast(''), 4000);
+  };
+
+  const handleLeaveSubmit = (e) => {
+    e.preventDefault();
+    setLeaveRequests([...leaveRequests, {
+      id: `lr_${Date.now()}`,
+      workerId: worker.id,
+      companyId: currentCompanyId,
+      startDate: newLeave.startDate,
+      endDate: newLeave.endDate,
+      type: newLeave.type,
+      status: 'En attente'
+    }]);
+    setShowLeaveModal(false);
+    setNewLeave({ startDate: '', endDate: '', type: 'Congés Payés' });
+    showToast("Demande d'absence envoyée à votre direction.");
   };
 
   const paniers = Math.ceil(worker.hoursLoggedThisWeek / 7);
@@ -69,10 +107,18 @@ export default function WorkerMobileView({ currentCompanyId, currentUser, sites,
   return (
     <div className="max-w-md mx-auto bg-slate-900 min-h-[85vh] flex flex-col border border-slate-800 shadow-2xl sm:rounded-3xl overflow-hidden relative">
 
+      {/* Dev Toggle for GPS Demo */}
+      <button
+        onClick={() => setGpsStatus(gpsStatus === 'valid' ? 'invalid' : 'valid')}
+        className="absolute top-2 right-2 z-50 text-[10px] bg-slate-800 text-slate-500 px-2 rounded hover:bg-slate-700"
+      >
+        [Dev] GPS: {gpsStatus}
+      </button>
+
       {/* Toast */}
-      {showToast && (
-        <div className="absolute top-4 left-4 right-4 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-xl z-50 text-sm font-medium animate-pulse text-center">
-          {showToast}
+      {toastMessage && (
+        <div className="absolute top-8 left-4 right-4 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-xl z-50 text-sm font-medium animate-pulse text-center">
+          {toastMessage}
         </div>
       )}
 
@@ -97,19 +143,46 @@ export default function WorkerMobileView({ currentCompanyId, currentUser, sites,
           </div>
         </div>
 
-        {/* Action Button (Interactive Time Tracker Circle) */}
-        <div className="flex flex-col items-center justify-center py-4 space-y-6">
+        {/* Action Button (Interactive Time Tracker Circle) with Geofencing */}
+        <div className="flex flex-col items-center justify-center py-2 space-y-4">
+
+          {shiftState === 'stopped' && (
+             <div className="text-center w-full mb-2">
+                {gpsStatus === 'invalid' && (
+                  <div className="bg-rose-900/30 border border-rose-800 text-rose-400 text-xs py-2 px-3 rounded-lg mx-auto w-fit">
+                    📍 Vous êtes à 4.2km du chantier. Pointage bloqué.
+                  </div>
+                )}
+                {gpsStatus === 'checking' && (
+                  <div className="text-blue-400 text-xs py-2 animate-pulse font-bold">
+                    Acquisition GPS en cours...
+                  </div>
+                )}
+                {gpsStatus === 'valid' && (
+                  <div className="bg-emerald-900/30 border border-emerald-800 text-emerald-400 text-xs py-2 px-3 rounded-lg mx-auto w-fit font-bold shadow-sm">
+                    📍 À 15m du chantier (Position validée)
+                  </div>
+                )}
+             </div>
+          )}
+
           {shiftState === 'stopped' ? (
              <button
-               onClick={handleStart}
-               className="w-56 h-56 rounded-full flex flex-col items-center justify-center shadow-lg transition-transform transform active:scale-95 bg-blue-600 text-white border-4 border-blue-500 shadow-[0_0_30px_rgba(37,99,235,0.4)]"
+               onClick={gpsStatus === 'valid' ? handleStart : handleStartCheck}
+               disabled={gpsStatus === 'checking'}
+               className={`w-56 h-56 rounded-full flex flex-col items-center justify-center shadow-lg transition-transform transform active:scale-95 border-4
+                 ${gpsStatus === 'valid'
+                   ? 'bg-blue-600 text-white border-blue-500 shadow-[0_0_30px_rgba(37,99,235,0.4)]'
+                   : 'bg-slate-800 text-slate-500 border-slate-700'
+                 }
+               `}
              >
-               <span className="text-5xl mb-2">▶</span>
+               <span className="text-5xl mb-2">{gpsStatus === 'valid' ? '▶' : '📍'}</span>
                <span className="font-bold text-2xl">Pointer</span>
-               <span className="font-bold text-2xl">mon arrivée</span>
+               <span className="font-bold text-xl opacity-80">{gpsStatus === 'valid' ? 'mon arrivée' : 'vérifier position'}</span>
              </button>
           ) : (
-             <div className="flex flex-col items-center">
+             <div className="flex flex-col items-center w-full">
                <div className={`w-56 h-56 rounded-full flex flex-col items-center justify-center shadow-lg transition-colors border-4 ${shiftState === 'active' ? 'bg-emerald-900/40 border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.3)]' : 'bg-amber-900/40 border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.3)]'}`}>
                   <span className="text-sm font-semibold uppercase tracking-wider text-slate-300 mb-1">
                      {shiftState === 'active' ? 'En cours' : 'En pause'}
@@ -118,11 +191,11 @@ export default function WorkerMobileView({ currentCompanyId, currentUser, sites,
                      {formatTime(secondsElapsed)}
                   </span>
                </div>
-               <div className="flex space-x-4 mt-6">
-                  <button onClick={handlePause} className="px-6 py-3 bg-slate-800 border border-slate-600 rounded-full font-bold text-slate-300 hover:bg-slate-700 transition-colors">
+               <div className="flex space-x-3 mt-6 w-full px-2">
+                  <button onClick={handlePause} className="flex-1 py-3 bg-slate-800 border border-slate-600 rounded-full font-bold text-slate-300 hover:bg-slate-700 transition-colors text-sm">
                      {shiftState === 'active' ? '⏸ Pause' : '▶ Reprendre'}
                   </button>
-                  <button onClick={handleStop} className="px-6 py-3 bg-red-900/40 border border-red-800 rounded-full font-bold text-red-400 hover:bg-red-900/60 transition-colors">
+                  <button onClick={handleStop} className="flex-1 py-3 bg-rose-900/40 border border-rose-800 rounded-full font-bold text-rose-400 hover:bg-rose-900/60 transition-colors shadow-sm text-sm">
                      ⏹ Terminer
                   </button>
                </div>
@@ -140,27 +213,62 @@ export default function WorkerMobileView({ currentCompanyId, currentUser, sites,
              <span className="text-2xl mb-1">📱</span>
              <span className="text-xs text-slate-300 font-medium">Scanner un outil</span>
            </button>
-           <button onClick={() => setShowSafety(true)} className="col-span-2 bg-slate-800/90 border border-slate-700 p-4 rounded-xl flex items-center justify-between hover:bg-slate-700/80 transition-colors">
-             <div className="flex items-center space-x-3">
-               <span className="text-2xl">👷</span>
-               <span className="text-sm text-slate-300 font-medium">Consignes de sécurité (EPI)</span>
-             </div>
-             <span className="text-slate-500">›</span>
+           <button onClick={() => setShowLeaveModal(true)} className="bg-slate-800/90 border border-slate-700 p-4 rounded-xl flex flex-col items-center text-center hover:bg-slate-700/80 transition-colors">
+             <span className="text-2xl mb-1">🏖️</span>
+             <span className="text-xs text-slate-300 font-medium">Congés & Absences</span>
+           </button>
+           <button onClick={() => setShowSafety(true)} className="bg-slate-800/90 border border-slate-700 p-4 rounded-xl flex flex-col items-center text-center hover:bg-slate-700/80 transition-colors">
+             <span className="text-2xl mb-1">👷</span>
+             <span className="text-xs text-slate-300 font-medium">Consignes EPI</span>
            </button>
         </div>
 
       </div>
 
       {/* Emergency Footer */}
-      <div className="p-4 bg-slate-950 mt-auto">
+      <div className="p-4 bg-slate-950 mt-auto border-t border-slate-900">
         <button
           onClick={() => setShowEmergency(true)}
-          className="w-full py-4 bg-red-600 text-white font-bold rounded-xl shadow-[0_0_15px_rgba(220,38,38,0.5)] flex justify-center items-center space-x-2 active:scale-95 transition-transform"
+          className="w-full py-4 bg-rose-600 text-white font-bold rounded-xl shadow-[0_0_15px_rgba(225,29,72,0.5)] flex justify-center items-center space-x-2 active:scale-95 transition-transform"
         >
           <span className="text-xl">🚨</span>
           <span className="uppercase tracking-wide">Urgence Chantier</span>
         </button>
       </div>
+
+      {/* Leaves Modal */}
+      {showLeaveModal && (
+        <div className="fixed inset-0 bg-slate-950/95 flex flex-col justify-end z-50 p-4 pb-12 animate-in slide-in-from-bottom-full">
+           <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden">
+              <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+                 <h2 className="text-xl font-bold text-white">Demander une absence</h2>
+                 <button onClick={() => setShowLeaveModal(false)} className="text-slate-400 hover:text-white text-xl bg-slate-800 w-8 h-8 rounded-full flex items-center justify-center">✕</button>
+              </div>
+              <form onSubmit={handleLeaveSubmit} className="p-5 space-y-4">
+                 <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1">Motif</label>
+                    <select required className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none" value={newLeave.type} onChange={e => setNewLeave({...newLeave, type: e.target.value})}>
+                       <option value="Congés Payés">Congés Payés (CP)</option>
+                       <option value="Maladie">Maladie</option>
+                       <option value="Intempérie">Intempérie</option>
+                       <option value="Autre">Autre (sans solde)</option>
+                    </select>
+                 </div>
+                 <div className="grid grid-cols-2 gap-3">
+                    <div>
+                       <label className="block text-sm font-medium text-slate-400 mb-1">Du</label>
+                       <input required type="date" className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none" value={newLeave.startDate} onChange={e => setNewLeave({...newLeave, startDate: e.target.value})} />
+                    </div>
+                    <div>
+                       <label className="block text-sm font-medium text-slate-400 mb-1">Au</label>
+                       <input required type="date" className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none" value={newLeave.endDate} onChange={e => setNewLeave({...newLeave, endDate: e.target.value})} />
+                    </div>
+                 </div>
+                 <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow mt-2 transition-colors active:bg-blue-700">Soumettre la demande</button>
+              </form>
+           </div>
+        </div>
+      )}
 
       {/* Meals Modal */}
       {showMeals && (
@@ -220,9 +328,9 @@ export default function WorkerMobileView({ currentCompanyId, currentUser, sites,
       {/* Emergency Modal */}
       {showEmergency && (
         <div className="fixed inset-0 bg-slate-950/95 flex flex-col justify-end z-50 p-4 pb-12 animate-in slide-in-from-bottom-full">
-           <div className="bg-slate-900 rounded-3xl border border-red-900/50 p-6 shadow-2xl relative">
+           <div className="bg-slate-900 rounded-3xl border border-rose-900/50 p-6 shadow-2xl relative">
               <button onClick={() => setShowEmergency(false)} className="absolute top-4 right-4 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center text-slate-400">✕</button>
-              <h2 className="text-2xl font-bold text-red-500 mb-6 text-center">Protocoles d'Urgence</h2>
+              <h2 className="text-2xl font-bold text-rose-500 mb-6 text-center">Protocoles d'Urgence</h2>
               <div className="space-y-4">
                  <button className="w-full bg-slate-800 border border-slate-700 p-4 rounded-xl flex items-center justify-between active:bg-slate-700">
                     <div className="text-left">
