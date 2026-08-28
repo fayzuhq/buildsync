@@ -96,6 +96,10 @@ export default function LoginPage({ onLogin }) {
               <span className="font-semibold text-blue-400">Compagnon</span>
               <span className="text-xs text-slate-500">Vue Mobile ouvrier</span>
             </button>
+            <button onClick={() => handleDemoLogin('client')} className="col-span-2 text-sm py-2 px-3 bg-slate-800 border border-slate-700 hover:border-blue-500 text-slate-300 hover:text-white rounded-lg transition-colors text-center flex flex-col items-center">
+              <span className="font-semibold text-blue-400">Client (Maître d'Ouvrage)</span>
+              <span className="text-xs text-slate-500">Portail Client Premium</span>
+            </button>
           </div>
         </div>
       </div>
