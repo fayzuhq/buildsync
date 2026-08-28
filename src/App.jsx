@@ -93,10 +93,10 @@ function App() {
                  sites={sites} setSites={setSites}
                  workers={workers} setWorkers={setWorkers}
                  equipment={equipment} setEquipment={setEquipment}
-                 quotes={quotes}
+                 quotes={quotes} setQuotes={setQuotes}
                  auditLogs={auditLogs}
-                 subcontractors={subcontractors}
-                 gedFolders={gedFolders}
+                 subcontractors={subcontractors} setSubcontractors={setSubcontractors}
+                 gedFolders={gedFolders} setGedFolders={setGedFolders}
                  snags={snags}
                />;
       case 'site_manager':

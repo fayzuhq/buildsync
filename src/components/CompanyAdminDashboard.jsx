@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 
 export default function CompanyAdminDashboard({
   currentCompanyId, companies, sites, setSites, workers, setWorkers,
-  equipment, setEquipment, quotes, auditLogs, subcontractors, gedFolders, snags
+  equipment, setEquipment, quotes, setQuotes, auditLogs,
+  subcontractors, setSubcontractors, gedFolders, setGedFolders, snags
 }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddWorker, setShowAddWorker] = useState(false);
@@ -10,12 +11,16 @@ export default function CompanyAdminDashboard({
   const [showNewSiteModal, setShowNewSiteModal] = useState(false);
   const [selectedSite, setSelectedSite] = useState(null);
 
-  // Modals for Site details
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [showPunchListModal, setShowPunchListModal] = useState(false);
+  const [showSubcontractorModal, setShowSubcontractorModal] = useState(false);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
 
   const [newWorker, setNewWorker] = useState({ name: '', role: 'Compagnon', email: '', phone: '', caces: '' });
   const [newSite, setNewSite] = useState({ name: '', address: '', managerName: '', budget: '' });
+  const [newSubcontractor, setNewSubcontractor] = useState({ name: '', specialty: '', contact: '', insuranceExpiry: '' });
+  const [newQuote, setNewQuote] = useState({ client: '', siteId: '', amount: '' });
+
   const [toastMessage, setToastMessage] = useState('');
 
   // Filtering data for active tenant
@@ -33,6 +38,11 @@ export default function CompanyAdminDashboard({
     return <div className="text-white p-4">Veuillez sélectionner une entreprise.</div>;
   }
 
+  const showToast = (msg) => {
+     setToastMessage(msg);
+     setTimeout(() => setToastMessage(''), 5000);
+  };
+
   const handleAddWorker = (e) => {
     e.preventDefault();
     setWorkers([...workers, {
@@ -43,15 +53,16 @@ export default function CompanyAdminDashboard({
       medicalExpiry: '2025-12-31',
       hoursLoggedThisWeek: 0
     }]);
-    setToastMessage(`Identifiants envoyés par SMS au ${newWorker.phone}`);
+    showToast(`Identifiants envoyés par SMS au ${newWorker.phone}`);
     setShowAddWorker(false);
-    setTimeout(() => setToastMessage(''), 5000);
+    setNewWorker({ name: '', role: 'Compagnon', email: '', phone: '', caces: '' });
   };
 
   const handleAddSite = (e) => {
     e.preventDefault();
+    const siteId = `s_new_${Date.now()}`;
     setSites([...sites, {
-      id: `s_new_${Date.now()}`,
+      id: siteId,
       companyId: currentCompanyId,
       name: newSite.name,
       address: newSite.address,
@@ -62,8 +73,54 @@ export default function CompanyAdminDashboard({
       progress: 0,
       workersCount: 0
     }]);
+
+    // Auto-generate default GED folders
+    setGedFolders([...gedFolders,
+      { id: `f1_${Date.now()}`, companyId: currentCompanyId, siteId: siteId, name: "Plans Architecte", files: [] },
+      { id: `f2_${Date.now()}`, companyId: currentCompanyId, siteId: siteId, name: "PPSPS / Sécurité", files: [] },
+      { id: `f3_${Date.now()}`, companyId: currentCompanyId, siteId: siteId, name: "Devis Signés", files: [] }
+    ]);
+
     setShowNewSiteModal(false);
     setNewSite({ name: '', address: '', managerName: '', budget: '' });
+    showToast("Nouveau chantier créé avec succès, avec ses dossiers GED.");
+  };
+
+  const handleAddSubcontractor = (e) => {
+    e.preventDefault();
+    setSubcontractors([...subcontractors, {
+       id: `sub_new_${Date.now()}`,
+       companyId: currentCompanyId,
+       ...newSubcontractor
+    }]);
+    setShowSubcontractorModal(false);
+    setNewSubcontractor({ name: '', specialty: '', contact: '', insuranceExpiry: '' });
+    showToast("Sous-traitant ajouté avec succès.");
+  };
+
+  const handleAddQuote = (e) => {
+    e.preventDefault();
+    setQuotes([...quotes, {
+       id: `q_new_${Date.now().toString().slice(-4)}`,
+       companyId: currentCompanyId,
+       siteId: newQuote.siteId,
+       client: newQuote.client,
+       amount: parseInt(newQuote.amount) || 0,
+       progressBilling: 0,
+       paymentStatus: 'En attente'
+    }]);
+    setShowQuoteModal(false);
+    setNewQuote({ client: '', siteId: '', amount: '' });
+    showToast("Nouvelle situation / devis créé avec succès.");
+  };
+
+  const updateWorkerAssignment = (workerId, newSiteId) => {
+     setWorkers(workers.map(w => w.id === workerId ? { ...w, siteAssigned: newSiteId === 'atelier' ? null : newSiteId } : w));
+  };
+
+  const updateEquipmentAssignment = (eqId, newSiteId) => {
+     const updatedHeavy = equipment.heavyMachinery.map(eq => eq.id === eqId ? { ...eq, assignedSiteId: newSiteId === 'depot' ? null : newSiteId } : eq);
+     setEquipment({ ...equipment, heavyMachinery: updatedHeavy });
   };
 
   const openSiteModal = (site) => {
@@ -181,44 +238,54 @@ export default function CompanyAdminDashboard({
         {activeTab === 'planning' && (
           <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow p-6 min-h-[400px]">
              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-bold text-white">Planning & Équipes (Semaine 42)</h2>
-                <button className="bg-slate-700 hover:bg-slate-600 text-white text-sm py-1.5 px-3 rounded shadow">Gérer les affectations</button>
+                <h2 className="text-lg font-bold text-white">Planning & Affectations Interactives</h2>
              </div>
              <div className="overflow-x-auto">
                <div className="min-w-[800px]">
                  <div className="grid grid-cols-6 gap-2 text-center text-sm font-semibold text-slate-400 mb-2 border-b border-slate-700 pb-2">
-                    <div className="text-left">Ressource</div>
-                    <div>Lun</div>
-                    <div>Mar</div>
-                    <div>Mer</div>
-                    <div>Jeu</div>
-                    <div>Ven</div>
+                    <div className="text-left">Collaborateurs</div>
+                    <div className="col-span-4 text-left pl-2">Chantier Assigné (Saisissez pour réaffecter)</div>
+                    <div>Statut Hebdo</div>
                  </div>
                  <div className="space-y-2">
-                    {companyWorkers.map(w => {
-                       const siteName = w.siteAssigned ? companySites.find(s=>s.id === w.siteAssigned)?.name : 'Atelier / Dépôt';
-                       return (
-                       <div key={w.id} className="grid grid-cols-6 gap-2 items-center text-sm p-1 hover:bg-slate-800/50 rounded">
+                    {companyWorkers.map(w => (
+                       <div key={w.id} className="grid grid-cols-6 gap-2 items-center text-sm p-2 hover:bg-slate-800/50 rounded transition-colors">
                           <div className="text-white font-medium truncate">{w.name} <span className="block text-xs text-slate-500">{w.role}</span></div>
-                          <div className="col-span-3 bg-blue-900/50 border border-blue-800 text-blue-300 rounded p-2 text-xs text-center truncate shadow-sm cursor-pointer hover:bg-blue-800/50">
-                            {siteName}
+                          <div className="col-span-4">
+                             <select
+                               value={w.siteAssigned || 'atelier'}
+                               onChange={(e) => updateWorkerAssignment(w.id, e.target.value)}
+                               className="w-full bg-slate-900 border border-slate-700 text-slate-300 rounded p-1.5 focus:border-blue-500 focus:ring-1 outline-none"
+                             >
+                                <option value="atelier">Atelier / Dépôt</option>
+                                {companySites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                             </select>
                           </div>
-                          <div className="bg-amber-900/50 border border-amber-800 text-amber-300 rounded p-2 text-xs text-center shadow-sm">Formation</div>
-                          <div className="bg-slate-700 rounded p-2 text-xs text-center text-slate-400">Repos</div>
+                          <div className="bg-emerald-900/40 border border-emerald-800 text-emerald-300 rounded p-1.5 text-xs text-center">En poste</div>
                        </div>
-                    )})}
+                    ))}
                     <div className="my-4 border-b border-slate-700"></div>
-                    <h3 className="text-slate-400 font-bold mb-2 uppercase text-xs">Gros Engins</h3>
-                    {companyHeavyEq.map(eq => {
-                       const siteName = eq.assignedSiteId ? companySites.find(s=>s.id === eq.assignedSiteId)?.name : 'Dépôt Central';
-                       return (
-                       <div key={eq.id} className="grid grid-cols-6 gap-2 items-center text-sm p-1 hover:bg-slate-800/50 rounded">
+                    <div className="grid grid-cols-6 gap-2 text-center text-sm font-semibold text-slate-400 mb-2 border-b border-slate-700 pb-2">
+                       <div className="text-left">Gros Engins</div>
+                       <div className="col-span-4 text-left pl-2">Lieu d'affectation</div>
+                       <div>Statut Machine</div>
+                    </div>
+                    {companyHeavyEq.map(eq => (
+                       <div key={eq.id} className="grid grid-cols-6 gap-2 items-center text-sm p-2 hover:bg-slate-800/50 rounded transition-colors">
                           <div className="text-white font-medium truncate">{eq.name}</div>
-                          <div className="col-span-5 bg-emerald-900/40 border border-emerald-800 text-emerald-300 rounded p-2 text-xs text-center truncate shadow-sm cursor-pointer hover:bg-emerald-800/50">
-                             {siteName}
+                          <div className="col-span-4">
+                             <select
+                               value={eq.assignedSiteId || 'depot'}
+                               onChange={(e) => updateEquipmentAssignment(eq.id, e.target.value)}
+                               className="w-full bg-slate-900 border border-slate-700 text-slate-300 rounded p-1.5 focus:border-blue-500 focus:ring-1 outline-none"
+                             >
+                                <option value="depot">Dépôt Central</option>
+                                {companySites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                             </select>
                           </div>
+                          <div className="bg-blue-900/40 border border-blue-800 text-blue-300 rounded p-1.5 text-xs text-center">{eq.status}</div>
                        </div>
-                    )})}
+                    ))}
                  </div>
                </div>
              </div>
@@ -230,7 +297,7 @@ export default function CompanyAdminDashboard({
           <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
             <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
               <h2 className="text-lg font-bold text-white">Suivi des Devis & Facturation BTP</h2>
-              <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm">+ Nouvelle Situation</button>
+              <button onClick={() => setShowQuoteModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm">+ Nouvelle Situation</button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-slate-300 text-sm">
@@ -239,9 +306,9 @@ export default function CompanyAdminDashboard({
                     <th className="px-5 py-3">Réf Devis</th>
                     <th className="px-5 py-3">Client (Chantier)</th>
                     <th className="px-5 py-3 text-right">Montant HT</th>
-                    <th className="px-5 py-3 text-right">Acompte</th>
+                    <th className="px-5 py-3 text-right">Acompte (30%)</th>
                     <th className="px-5 py-3 text-center">Avancement</th>
-                    <th className="px-5 py-3 text-right">Retenue (5%)</th>
+                    <th className="px-5 py-3 text-right">Retenue Garantie (5%)</th>
                     <th className="px-5 py-3 text-center">Paiement</th>
                   </tr>
                 </thead>
@@ -285,7 +352,7 @@ export default function CompanyAdminDashboard({
           <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
             <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
               <h2 className="text-lg font-bold text-white">Sous-traitance & Achats</h2>
-              <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm">+ Ajouter un sous-traitant</button>
+              <button onClick={() => setShowSubcontractorModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm">+ Ajouter un sous-traitant</button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-slate-300 text-sm">
@@ -317,6 +384,9 @@ export default function CompanyAdminDashboard({
                       </td>
                     </tr>
                   )})}
+                  {companySubcontractors.length === 0 && (
+                     <tr><td colSpan="4" className="text-center p-4 text-slate-500">Aucun sous-traitant.</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -552,6 +622,9 @@ export default function CompanyAdminDashboard({
                                       <button onClick={() => setShowPdfModal(true)} className="text-blue-400 hover:text-blue-300">Ouvrir</button>
                                    </li>
                                 ))}
+                                {folder.files.length === 0 && (
+                                   <li className="text-sm p-2 text-slate-500 italic">Dossier vide.</li>
+                                )}
                              </ul>
                           </div>
                        ))}
@@ -689,6 +762,73 @@ export default function CompanyAdminDashboard({
               </div>
               <div className="pt-4 flex justify-end space-x-3">
                 <button type="button" onClick={() => setShowNewSiteModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
+                <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow">Créer</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - New Subcontractor */}
+      {showSubcontractorModal && (
+        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
+              <h3 className="text-lg font-bold text-white">Ajouter un sous-traitant</h3>
+              <button onClick={() => setShowSubcontractorModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+            <form onSubmit={handleAddSubcontractor} className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Nom de l'entreprise</label>
+                <input required type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newSubcontractor.name} onChange={e => setNewSubcontractor({...newSubcontractor, name: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Spécialité</label>
+                <input required type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" placeholder="Ex: Plomberie, Peinture..." value={newSubcontractor.specialty} onChange={e => setNewSubcontractor({...newSubcontractor, specialty: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Contact (Email/Tel)</label>
+                <input required type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newSubcontractor.contact} onChange={e => setNewSubcontractor({...newSubcontractor, contact: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Expiration Assurance Décennale</label>
+                <input required type="date" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newSubcontractor.insuranceExpiry} onChange={e => setNewSubcontractor({...newSubcontractor, insuranceExpiry: e.target.value})} />
+              </div>
+              <div className="pt-4 flex justify-end space-x-3">
+                <button type="button" onClick={() => setShowSubcontractorModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
+                <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow">Ajouter</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - New Quote / Billing */}
+      {showQuoteModal && (
+        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
+              <h3 className="text-lg font-bold text-white">Nouvelle Situation / Devis</h3>
+              <button onClick={() => setShowQuoteModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+            <form onSubmit={handleAddQuote} className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Client</label>
+                <input required type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newQuote.client} onChange={e => setNewQuote({...newQuote, client: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Chantier Associé</label>
+                <select required className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newQuote.siteId} onChange={e => setNewQuote({...newQuote, siteId: e.target.value})}>
+                  <option value="">Sélectionnez un chantier</option>
+                  {companySites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Montant HT (€)</label>
+                <input required type="number" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newQuote.amount} onChange={e => setNewQuote({...newQuote, amount: e.target.value})} />
+              </div>
+              <div className="pt-4 flex justify-end space-x-3">
+                <button type="button" onClick={() => setShowQuoteModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
                 <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow">Créer</button>
               </div>
             </form>
