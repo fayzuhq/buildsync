@@ -16,6 +16,8 @@ export default function CompanyAdminDashboard({
   const [showPunchListModal, setShowPunchListModal] = useState(false);
   const [showSubcontractorModal, setShowSubcontractorModal] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [selectedResourceForAssignment, setSelectedResourceForAssignment] = useState(null);
 
   const [newWorker, setNewWorker] = useState({ name: '', role: 'Compagnon', email: '', phone: '', caces: '' });
   const [newSite, setNewSite] = useState({ name: '', address: '', managerName: '', budget: '' });
@@ -116,13 +118,27 @@ export default function CompanyAdminDashboard({
     showToast("Nouvelle situation / devis créé avec succès.");
   };
 
-  const updateWorkerAssignment = (workerId, newSiteId) => {
-     setWorkers(workers.map(w => w.id === workerId ? { ...w, siteAssigned: newSiteId === 'atelier' ? null : newSiteId } : w));
+  const handleAssignResource = (e) => {
+     e.preventDefault();
+     const res = selectedResourceForAssignment;
+     const val = e.target.assignment.value;
+
+     if (res.type === 'worker') {
+        const siteAssigned = val === 'atelier' || val === 'conge' ? null : val;
+        setWorkers(workers.map(w => w.id === res.id ? { ...w, siteAssigned } : w));
+     } else {
+        const assignedSiteId = val === 'depot' || val === 'maintenance' ? null : val;
+        const status = val === 'maintenance' ? 'En maintenance' : 'En service';
+        const updatedHeavy = equipment.heavyMachinery.map(eq => eq.id === res.id ? { ...eq, assignedSiteId, status } : eq);
+        setEquipment({ ...equipment, heavyMachinery: updatedHeavy });
+     }
+     setShowAssignmentModal(false);
+     showToast("Affectation mise à jour avec succès dans le planning.");
   };
 
-  const updateEquipmentAssignment = (eqId, newSiteId) => {
-     const updatedHeavy = equipment.heavyMachinery.map(eq => eq.id === eqId ? { ...eq, assignedSiteId: newSiteId === 'depot' ? null : newSiteId } : eq);
-     setEquipment({ ...equipment, heavyMachinery: updatedHeavy });
+  const openAssignmentModal = (resource, type) => {
+     setSelectedResourceForAssignment({ ...resource, type });
+     setShowAssignmentModal(true);
   };
 
   const openSiteModal = (site) => {
@@ -265,58 +281,95 @@ export default function CompanyAdminDashboard({
           </div>
         )}
 
-        {/* TAB 2: PLANNING */}
+        {/* TAB 2: PLANNING (Visual Gantt) */}
         {activeTab === 'planning' && (
-          <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow p-6 min-h-[400px]">
-             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-bold text-white">Planning & Affectations Interactives</h2>
+          <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow p-6 min-h-[500px]">
+             <div className="flex justify-between items-center mb-6">
+                <h2 className="text-lg font-bold text-white">Gantt & Affectations Interactives</h2>
+                <div className="text-sm text-slate-400 flex space-x-4">
+                   <span className="flex items-center"><div className="w-3 h-3 bg-blue-600 rounded mr-2"></div> Chantier</span>
+                   <span className="flex items-center"><div className="w-3 h-3 bg-amber-500 rounded mr-2"></div> Absence / Maintenance</span>
+                   <span className="flex items-center"><div className="w-3 h-3 bg-slate-600 rounded mr-2"></div> Atelier / Non assigné</span>
+                </div>
              </div>
-             <div className="overflow-x-auto">
-               <div className="min-w-[800px]">
-                 <div className="grid grid-cols-6 gap-2 text-center text-sm font-semibold text-slate-400 mb-2 border-b border-slate-700 pb-2">
-                    <div className="text-left">Collaborateurs</div>
-                    <div className="col-span-4 text-left pl-2">Chantier Assigné (Saisissez pour réaffecter)</div>
-                    <div>Statut Hebdo</div>
-                 </div>
-                 <div className="space-y-2">
-                    {companyWorkers.map(w => (
-                       <div key={w.id} className="grid grid-cols-6 gap-2 items-center text-sm p-2 hover:bg-slate-800/50 rounded transition-colors">
-                          <div className="text-white font-medium truncate">{w.name} <span className="block text-xs text-slate-500">{w.role}</span></div>
-                          <div className="col-span-4">
-                             <select
-                               value={w.siteAssigned || 'atelier'}
-                               onChange={(e) => updateWorkerAssignment(w.id, e.target.value)}
-                               className="w-full bg-slate-900 border border-slate-700 text-slate-300 rounded p-1.5 focus:border-blue-500 focus:ring-1 outline-none"
-                             >
-                                <option value="atelier">Atelier / Dépôt</option>
-                                {companySites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                             </select>
-                          </div>
-                          <div className="bg-emerald-900/40 border border-emerald-800 text-emerald-300 rounded p-1.5 text-xs text-center">En poste</div>
-                       </div>
-                    ))}
-                    <div className="my-4 border-b border-slate-700"></div>
-                    <div className="grid grid-cols-6 gap-2 text-center text-sm font-semibold text-slate-400 mb-2 border-b border-slate-700 pb-2">
-                       <div className="text-left">Gros Engins</div>
-                       <div className="col-span-4 text-left pl-2">Lieu d'affectation</div>
-                       <div>Statut Machine</div>
+
+             <div className="overflow-x-auto relative pb-8">
+               <div className="min-w-[1000px] border border-slate-700 rounded-lg overflow-hidden relative bg-slate-900/50">
+
+                 {/* Aujourd'hui Marker */}
+                 <div className="absolute top-0 bottom-0 left-[35%] w-0.5 bg-rose-500 z-10 shadow-[0_0_8px_rgba(244,63,94,0.8)] pointer-events-none"></div>
+
+                 {/* Header */}
+                 <div className="flex text-xs font-semibold text-slate-400 bg-slate-800 border-b border-slate-700">
+                    <div className="w-48 shrink-0 py-3 px-4 border-r border-slate-700">Ressources</div>
+                    <div className="flex-1 grid grid-cols-14 divide-x divide-slate-700/50">
+                       {[...Array(14)].map((_, i) => (
+                          <div key={i} className="py-3 text-center truncate">{`J+${i}`}</div>
+                       ))}
                     </div>
-                    {companyHeavyEq.map(eq => (
-                       <div key={eq.id} className="grid grid-cols-6 gap-2 items-center text-sm p-2 hover:bg-slate-800/50 rounded transition-colors">
-                          <div className="text-white font-medium truncate">{eq.name}</div>
-                          <div className="col-span-4">
-                             <select
-                               value={eq.assignedSiteId || 'depot'}
-                               onChange={(e) => updateEquipmentAssignment(eq.id, e.target.value)}
-                               className="w-full bg-slate-900 border border-slate-700 text-slate-300 rounded p-1.5 focus:border-blue-500 focus:ring-1 outline-none"
-                             >
-                                <option value="depot">Dépôt Central</option>
-                                {companySites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                             </select>
+                 </div>
+
+                 <div className="divide-y divide-slate-700/50">
+                    <div className="bg-slate-800/50 px-4 py-2 text-xs font-bold text-slate-300 uppercase tracking-wider">Collaborateurs</div>
+
+                    {companyWorkers.map(w => {
+                       const site = companySites.find(s => s.id === w.siteAssigned);
+                       const hasLeave = leaveRequests.some(lr => lr.workerId === w.id && lr.status === 'Approuvé');
+
+                       let blockClasses = "bg-slate-700 border-slate-600 text-slate-300";
+                       let label = "Au Dépôt";
+                       if (hasLeave) {
+                          blockClasses = "bg-amber-900/60 border-amber-500/50 text-amber-300";
+                          label = "En Congé";
+                       } else if (site) {
+                          blockClasses = "bg-blue-600/80 border-blue-500 shadow-sm text-white";
+                          label = site.name;
+                       }
+
+                       return (
+                       <div key={w.id} className="flex hover:bg-slate-800/30 transition-colors group cursor-pointer" onClick={() => openAssignmentModal(w, 'worker')}>
+                          <div className="w-48 shrink-0 py-3 px-4 border-r border-slate-700 truncate">
+                             <div className="text-white font-medium text-sm">{w.name}</div>
+                             <div className="text-xs text-slate-500 truncate">{w.role}</div>
                           </div>
-                          <div className="bg-blue-900/40 border border-blue-800 text-blue-300 rounded p-1.5 text-xs text-center">{eq.status}</div>
+                          <div className="flex-1 p-2 relative">
+                             {/* The Block spans the whole 14 days for simulation, indicating current state */}
+                             <div className={`w-full h-full rounded-md border flex items-center px-3 text-xs font-semibold truncate transition-all group-hover:brightness-110 ${blockClasses}`}>
+                                {label}
+                             </div>
+                          </div>
                        </div>
-                    ))}
+                    )})}
+
+                    <div className="bg-slate-800/50 px-4 py-2 text-xs font-bold text-slate-300 uppercase tracking-wider">Gros Engins</div>
+
+                    {companyHeavyEq.map(eq => {
+                       const site = companySites.find(s => s.id === eq.assignedSiteId);
+                       const isMaint = eq.status === 'En maintenance';
+
+                       let blockClasses = "bg-slate-700 border-slate-600 text-slate-300";
+                       let label = "Au Dépôt";
+                       if (isMaint) {
+                          blockClasses = "bg-rose-900/60 border-rose-500/50 text-rose-300";
+                          label = "En Maintenance";
+                       } else if (site) {
+                          blockClasses = "bg-indigo-600/80 border-indigo-500 shadow-sm text-white";
+                          label = site.name;
+                       }
+
+                       return (
+                       <div key={eq.id} className="flex hover:bg-slate-800/30 transition-colors group cursor-pointer" onClick={() => openAssignmentModal(eq, 'equipment')}>
+                          <div className="w-48 shrink-0 py-3 px-4 border-r border-slate-700 truncate">
+                             <div className="text-white font-medium text-sm">{eq.name}</div>
+                             <div className="text-xs text-slate-500 truncate">S/N: {eq.serialNumber}</div>
+                          </div>
+                          <div className="flex-1 p-2 relative">
+                             <div className={`w-full h-full rounded-md border flex items-center px-3 text-xs font-semibold truncate transition-all group-hover:brightness-110 ${blockClasses}`}>
+                                {label}
+                             </div>
+                          </div>
+                       </div>
+                    )})}
                  </div>
                </div>
              </div>
@@ -886,6 +939,47 @@ export default function CompanyAdminDashboard({
               <div className="pt-4 flex justify-end space-x-3">
                 <button type="button" onClick={() => setShowSubcontractorModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
                 <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow">Ajouter</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - Interactive Assignment */}
+      {showAssignmentModal && selectedResourceForAssignment && (
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
+              <h3 className="text-lg font-bold text-white">Réaffecter la ressource</h3>
+              <button onClick={() => setShowAssignmentModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+            <form onSubmit={handleAssignResource} className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">Ressource</label>
+                <input type="text" readOnly className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-slate-300 outline-none cursor-not-allowed" value={selectedResourceForAssignment.name} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Nouvelle Affectation</label>
+                <select name="assignment" required className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" defaultValue={selectedResourceForAssignment.type === 'worker' ? (selectedResourceForAssignment.siteAssigned || 'atelier') : (selectedResourceForAssignment.assignedSiteId || 'depot')}>
+                  {selectedResourceForAssignment.type === 'worker' ? (
+                     <>
+                       <option value="atelier">Atelier / Non assigné</option>
+                       <option value="conge">En Congé / Maladie</option>
+                     </>
+                  ) : (
+                     <>
+                       <option value="depot">Dépôt Central</option>
+                       <option value="maintenance">En Maintenance</option>
+                     </>
+                  )}
+                  <optgroup label="Chantiers Actifs">
+                     {companySites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </optgroup>
+                </select>
+              </div>
+              <div className="pt-4 flex justify-end space-x-3">
+                <button type="button" onClick={() => setShowAssignmentModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
+                <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow transition-colors">Affecter</button>
               </div>
             </form>
           </div>
