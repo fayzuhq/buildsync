@@ -10,6 +10,8 @@ import { mockPlatformSettings, mockCompanies } from './mockData';
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [impersonatedUser, setImpersonatedUser] = useState(null);
+  const [globalSettings, setGlobalSettings] = useState(mockPlatformSettings);
+  const [companies, setCompanies] = useState(mockCompanies);
 
   const handleLogout = () => {
     setCurrentUser(null);
@@ -27,7 +29,7 @@ function App() {
   const activeUser = impersonatedUser || currentUser;
 
   // Global Maintenance Check (Bypass for super admin)
-  if (mockPlatformSettings.globalMaintenance && currentUser.role !== 'super_admin') {
+  if (globalSettings.globalMaintenance && currentUser.role !== 'super_admin') {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center">
         <div className="text-blue-500 text-6xl mb-4">⚙️</div>
@@ -41,7 +43,7 @@ function App() {
   }
 
   // Tenant Maintenance Check (Bypass for super admin acting naturally, but applies if impersonating)
-  const activeCompany = mockCompanies.find(c => c.id === activeUser.companyId);
+  const activeCompany = companies.find(c => c.id === activeUser.companyId);
   if (activeCompany && activeCompany.maintenanceMode && activeUser.role !== 'super_admin') {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col">
@@ -61,11 +63,17 @@ function App() {
   const renderView = () => {
     switch (activeUser.role) {
       case 'super_admin':
-        return <SuperAdminDashboard setImpersonatedUser={setImpersonatedUser} />;
+        return <SuperAdminDashboard
+                 setImpersonatedUser={setImpersonatedUser}
+                 globalSettings={globalSettings}
+                 setGlobalSettings={setGlobalSettings}
+                 companies={companies}
+                 setCompanies={setCompanies}
+               />;
       case 'company_admin':
-        return <CompanyAdminDashboard currentCompanyId={activeUser.companyId} />;
+        return <CompanyAdminDashboard currentCompanyId={activeUser.companyId} companies={companies} />;
       case 'site_manager':
-        return <SiteManagerDashboard currentCompanyId={activeUser.companyId} />;
+        return <SiteManagerDashboard currentCompanyId={activeUser.companyId} companies={companies} />;
       case 'worker':
         return <WorkerMobileView currentCompanyId={activeUser.companyId} currentUser={activeUser} />;
       default:
@@ -83,9 +91,9 @@ function App() {
       />
 
       {/* Broadcast Banner */}
-      {mockPlatformSettings.broadcastBanner && activeUser.role !== 'super_admin' && (
+      {globalSettings.broadcastBanner && activeUser.role !== 'super_admin' && (
         <div className="bg-blue-900/50 border-b border-blue-800 text-blue-300 text-center py-2 text-sm font-medium px-4">
-          📢 {mockPlatformSettings.broadcastBanner}
+          📢 {globalSettings.broadcastBanner}
         </div>
       )}
 

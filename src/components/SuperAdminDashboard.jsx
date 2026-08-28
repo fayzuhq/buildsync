@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { mockCompanies, mockStats, mockAuditLogs, mockInvoicesSaaS, mockPlatformSettings } from '../mockData';
+import { mockStats, mockAuditLogs, mockInvoicesSaaS } from '../mockData';
 
-export default function SuperAdminDashboard({ setImpersonatedUser }) {
+export default function SuperAdminDashboard({ setImpersonatedUser, globalSettings, setGlobalSettings, companies, setCompanies }) {
   const [activeTab, setActiveTab] = useState('entreprises');
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -14,7 +14,9 @@ export default function SuperAdminDashboard({ setImpersonatedUser }) {
     name: '', siren: '', contactEmail: '', phone: '', planType: 'Starter', userLimit: 5
   });
 
-  const filteredCompanies = mockCompanies.filter(c =>
+  const [bannerInput, setBannerInput] = useState(globalSettings.broadcastBanner);
+
+  const filteredCompanies = companies.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.siren.includes(searchTerm)
   );
 
@@ -22,8 +24,43 @@ export default function SuperAdminDashboard({ setImpersonatedUser }) {
 
   const handleAddCompany = (e) => {
     e.preventDefault();
+    const id = `c${companies.length + 1}`;
+    setCompanies([...companies, {
+      id,
+      name: newCompany.name,
+      siren: newCompany.siren,
+      contactEmail: newCompany.contactEmail,
+      planType: newCompany.planType,
+      status: 'Actif',
+      memberCount: 1,
+      activeSites: 0,
+      monthlyFee: newCompany.planType === 'Starter' ? 49 : newCompany.planType === 'Pro' ? 299 : 999,
+      renewalDate: '2025-01-01',
+      maintenanceMode: false,
+      features: { grosEngins: false, exportPaie: false, situations: false, signatureElectronique: false }
+    }]);
     alert(`Tenant créé. Identifiants envoyés par SMS au ${newCompany.phone}`);
     setShowModal(false);
+    setNewCompany({ name: '', siren: '', contactEmail: '', phone: '', planType: 'Starter', userLimit: 5 });
+  };
+
+  const handleToggleGlobalMaintenance = () => {
+    setGlobalSettings({ ...globalSettings, globalMaintenance: !globalSettings.globalMaintenance });
+  };
+
+  const handlePublishBanner = () => {
+    setGlobalSettings({ ...globalSettings, broadcastBanner: bannerInput });
+    alert("Flash Info publié.");
+  };
+
+  const handleSavePricing = () => {
+    alert("Matrice des forfaits mise à jour.");
+  };
+
+  const handleSaveFeatures = (e) => {
+    e.preventDefault();
+    alert("Configuration enregistrée.");
+    setShowFeatureModal(false);
   };
 
   const handleImpersonate = (company) => {
@@ -49,8 +86,13 @@ export default function SuperAdminDashboard({ setImpersonatedUser }) {
            <h1 className="text-2xl font-bold text-slate-100">Console Super Administrateur</h1>
         </div>
         <div className="flex items-center space-x-4">
-           <label className="flex items-center space-x-2 text-sm text-slate-300">
-             <input type="checkbox" className="rounded border-slate-600 bg-slate-900 text-blue-600 focus:ring-blue-500" defaultChecked={mockPlatformSettings.globalMaintenance} />
+           <label className="flex items-center space-x-2 text-sm text-slate-300 cursor-pointer">
+             <input
+               type="checkbox"
+               className="rounded border-slate-600 bg-slate-900 text-blue-600 focus:ring-blue-500 cursor-pointer"
+               checked={globalSettings.globalMaintenance}
+               onChange={handleToggleGlobalMaintenance}
+             />
              <span>Maintenance Globale</span>
            </label>
         </div>
@@ -183,7 +225,7 @@ export default function SuperAdminDashboard({ setImpersonatedUser }) {
                          <label className="text-xs text-slate-400 uppercase">Max Chantiers</label>
                          <input type="number" defaultValue={[3, 10, 999][idx]} className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white mt-1" />
                       </div>
-                      <button className="w-full bg-slate-700 hover:bg-slate-600 text-white rounded py-2 text-sm transition-colors mt-2">Mettre à jour</button>
+                      <button onClick={handleSavePricing} className="w-full bg-slate-700 hover:bg-slate-600 text-white rounded py-2 text-sm transition-colors mt-2">Mettre à jour</button>
                     </div>
                   </div>
                 ))}
@@ -238,8 +280,14 @@ export default function SuperAdminDashboard({ setImpersonatedUser }) {
             <div className="bg-slate-800/90 p-5 rounded-xl border border-slate-700 shadow">
                <h2 className="text-lg font-bold text-white mb-3">Flash Info (Broadcast Banner)</h2>
                <div className="flex space-x-3">
-                 <input type="text" defaultValue={mockPlatformSettings.broadcastBanner} className="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" placeholder="Message global..." />
-                 <button className="bg-blue-600 hover:bg-blue-500 text-white px-4 rounded-lg font-bold transition-colors shadow">Publier</button>
+                 <input
+                   type="text"
+                   value={bannerInput}
+                   onChange={(e) => setBannerInput(e.target.value)}
+                   className="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none"
+                   placeholder="Message global..."
+                 />
+                 <button onClick={handlePublishBanner} className="bg-blue-600 hover:bg-blue-500 text-white px-4 rounded-lg font-bold transition-colors shadow">Publier</button>
                </div>
             </div>
 
@@ -253,7 +301,7 @@ export default function SuperAdminDashboard({ setImpersonatedUser }) {
                 >
                   <option value="All">Toutes les entités</option>
                   <option value="system">Système global</option>
-                  {mockCompanies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div className="p-5 space-y-3">
@@ -341,7 +389,7 @@ export default function SuperAdminDashboard({ setImpersonatedUser }) {
             </div>
             <div className="p-5 border-t border-slate-700 bg-slate-900 flex justify-end space-x-3">
                <button onClick={() => setShowFeatureModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700">Fermer</button>
-               <button onClick={() => setShowFeatureModal(false)} className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow">Enregistrer</button>
+               <button onClick={handleSaveFeatures} className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow">Enregistrer</button>
             </div>
           </div>
         </div>

@@ -7,8 +7,8 @@ export default function LoginPage({ onLogin }) {
 
   const handleManualLogin = (e) => {
     e.preventDefault();
-    // Simulate finding user by email
-    const user = mockUsers.find(u => u.email === identifier);
+    // Simulate finding user by email or phone
+    const user = mockUsers.find(u => u.email === identifier || u.phone === identifier);
     if (user) {
       onLogin(user);
     } else {

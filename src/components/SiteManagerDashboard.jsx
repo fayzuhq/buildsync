@@ -1,20 +1,42 @@
 import React, { useState } from 'react';
 import { mockSites, mockWorkers, mockEquipment, mockDeliveries, mockSnags } from '../mockData';
 
-export default function SiteManagerDashboard({ currentCompanyId }) {
-  const activeSite = mockSites.find(s => s.companyId === currentCompanyId) || mockSites[0];
+export default function SiteManagerDashboard({ currentCompanyId, currentUser }) {
+  // Find the site assigned to the logged-in Site Manager explicitly, fallback if not found (for robustness in mock)
+  const loggedInWorker = mockWorkers.find(w => w.id === currentUser?.workerId);
+  const siteIdToUse = loggedInWorker ? loggedInWorker.siteAssigned : mockSites.find(s => s.companyId === currentCompanyId)?.id;
+
+  const activeSite = mockSites.find(s => s.id === siteIdToUse);
+
   const siteWorkers = mockWorkers.filter(w => w.siteAssigned === activeSite?.id);
 
   const siteHeavyEq = mockEquipment.heavyMachinery.filter(e => e.assignedSiteId === activeSite?.id);
   const siteLightEq = mockEquipment.lightTools.filter(e => e.assignedSiteId === activeSite?.id);
 
-  const siteDeliveries = mockDeliveries.filter(d => d.siteId === activeSite?.id);
-  const siteSnags = mockSnags.filter(sn => sn.siteId === activeSite?.id);
+  const [localDeliveries, setLocalDeliveries] = useState(mockDeliveries.filter(d => d.siteId === activeSite?.id));
+  const [localSnags, setLocalSnags] = useState(mockSnags.filter(sn => sn.siteId === activeSite?.id));
 
   const [activeTab, setActiveTab] = useState('daily');
   const [report, setReport] = useState('');
+  const [toastMessage, setToastMessage] = useState('');
+
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [selectedEq, setSelectedEq] = useState(null);
+
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [newDelivery, setNewDelivery] = useState({ time: '', description: '' });
+
+  const [showSnagModal, setShowSnagModal] = useState(false);
+  const [newSnag, setNewSnag] = useState({ description: '', subcontractor: '', deadline: '' });
+
+  // Timesheet local state
+  const [timesheet, setTimesheet] = useState(siteWorkers.map(w => ({
+     workerId: w.id, present: true, hours: '8h', mealVoucher: true
+  })));
+
+  const handleTimesheetChange = (workerId, field, value) => {
+     setTimesheet(timesheet.map(t => t.workerId === workerId ? { ...t, [field]: value } : t));
+  };
 
   if (!activeSite) {
     return <div className="p-4 text-white">Aucun chantier assigné pour cette entreprise.</div>;
@@ -22,20 +44,53 @@ export default function SiteManagerDashboard({ currentCompanyId }) {
 
   const handleSubmitReport = (e) => {
     e.preventDefault();
-    alert("Rapport journalier soumis avec succès !");
+    setToastMessage("Rapport journalier et pointages soumis avec succès !");
     setReport('');
+    setTimeout(() => setToastMessage(''), 5000);
   };
 
   const handleTransfer = (e) => {
     e.preventDefault();
-    alert("Demande de transfert / attribution envoyée.");
+    setToastMessage("Demande de transfert / attribution envoyée.");
     setShowTransferModal(false);
     setSelectedEq(null);
+    setTimeout(() => setToastMessage(''), 5000);
   };
 
   const openTransfer = (eq) => {
     setSelectedEq(eq);
     setShowTransferModal(true);
+  };
+
+  const handleAddDelivery = (e) => {
+     e.preventDefault();
+     const newId = `d_new_${Date.now()}`;
+     setLocalDeliveries([...localDeliveries, {
+        id: newId,
+        companyId: currentCompanyId,
+        siteId: activeSite.id,
+        description: newDelivery.description,
+        time: newDelivery.time,
+        signature: false
+     }]);
+     setShowDeliveryModal(false);
+     setNewDelivery({ time: '', description: '' });
+  };
+
+  const handleAddSnag = (e) => {
+     e.preventDefault();
+     const newId = `sn_new_${Date.now()}`;
+     setLocalSnags([...localSnags, {
+        id: newId,
+        companyId: currentCompanyId,
+        siteId: activeSite.id,
+        description: newSnag.description,
+        subcontractor: newSnag.subcontractor,
+        deadline: newSnag.deadline,
+        status: 'Ouvert'
+     }]);
+     setShowSnagModal(false);
+     setNewSnag({ description: '', subcontractor: '', deadline: '' });
   };
 
   const tabs = [
@@ -47,6 +102,14 @@ export default function SiteManagerDashboard({ currentCompanyId }) {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-4 right-4 bg-emerald-600 text-white px-6 py-3 rounded-xl shadow-2xl z-50 flex items-center space-x-2 animate-bounce">
+          <span>✓</span>
+          <span className="font-medium">{toastMessage}</span>
+        </div>
+      )}
+
       <div className="bg-slate-800/90 p-6 rounded-xl border border-slate-700 shadow flex flex-col md:flex-row justify-between items-start md:items-center">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">{activeSite.name}</h1>
@@ -125,7 +188,9 @@ export default function SiteManagerDashboard({ currentCompanyId }) {
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-700/50">
-                     {siteWorkers.map(worker => (
+                     {siteWorkers.map(worker => {
+                       const ts = timesheet.find(t => t.workerId === worker.id);
+                       return (
                        <tr key={worker.id} className="hover:bg-slate-700/30">
                          <td className="px-5 py-3">
                            <div className="flex items-center space-x-3">
@@ -140,22 +205,22 @@ export default function SiteManagerDashboard({ currentCompanyId }) {
                          </td>
                          <td className="px-5 py-3 text-center">
                             <label className="relative inline-flex items-center cursor-pointer">
-                              <input type="checkbox" defaultChecked className="sr-only peer" />
+                              <input type="checkbox" checked={ts?.present} onChange={(e) => handleTimesheetChange(worker.id, 'present', e.target.checked)} className="sr-only peer" />
                               <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
                             </label>
                          </td>
                          <td className="px-5 py-3 text-center">
-                            <select className="bg-slate-900 border border-slate-700 rounded p-1 text-slate-300">
-                               <option>7h</option>
-                               <option selected>8h</option>
-                               <option>9h (Sup)</option>
+                            <select value={ts?.hours} onChange={(e) => handleTimesheetChange(worker.id, 'hours', e.target.value)} disabled={!ts?.present} className="bg-slate-900 border border-slate-700 rounded p-1 text-slate-300 disabled:opacity-50">
+                               <option value="7h">7h</option>
+                               <option value="8h">8h</option>
+                               <option value="9h (Sup)">9h (Sup)</option>
                             </select>
                          </td>
                          <td className="px-5 py-3 text-center">
-                             <input type="checkbox" defaultChecked className="rounded border-slate-600 text-blue-600 focus:ring-blue-500 bg-slate-900" />
+                             <input type="checkbox" checked={ts?.mealVoucher} onChange={(e) => handleTimesheetChange(worker.id, 'mealVoucher', e.target.checked)} disabled={!ts?.present} className="rounded border-slate-600 text-blue-600 focus:ring-blue-500 bg-slate-900 disabled:opacity-50" />
                          </td>
                        </tr>
-                     ))}
+                     )})}
                    </tbody>
                  </table>
               </div>
@@ -266,7 +331,7 @@ export default function SiteManagerDashboard({ currentCompanyId }) {
         <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden mt-4">
           <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
              <h2 className="text-lg font-bold text-white">Bons de Réception (BL)</h2>
-             <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-3 rounded text-sm">+ Nouvelle Livraison</button>
+             <button onClick={() => setShowDeliveryModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-3 rounded text-sm">+ Nouvelle Livraison</button>
           </div>
           <div className="overflow-x-auto">
              <table className="w-full text-left text-slate-300 text-sm">
@@ -278,7 +343,7 @@ export default function SiteManagerDashboard({ currentCompanyId }) {
                  </tr>
                </thead>
                <tbody className="divide-y divide-slate-700/50">
-                 {siteDeliveries.map(d => (
+                 {localDeliveries.map(d => (
                     <tr key={d.id} className="hover:bg-slate-700/30">
                        <td className="px-5 py-4 text-slate-400">{d.time}</td>
                        <td className="px-5 py-4 font-medium text-white">{d.description}</td>
@@ -302,10 +367,10 @@ export default function SiteManagerDashboard({ currentCompanyId }) {
         <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden mt-4">
           <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
              <h2 className="text-lg font-bold text-white">Réserves & Contrôle Qualité</h2>
-             <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-3 rounded text-sm">+ Créer une réserve</button>
+             <button onClick={() => setShowSnagModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-3 rounded text-sm">+ Créer une réserve</button>
           </div>
           <div className="p-5 grid gap-4 grid-cols-1 md:grid-cols-2">
-             {siteSnags.map(sn => (
+             {localSnags.map(sn => (
                 <div key={sn.id} className="bg-slate-900 border border-slate-700 rounded-lg p-4 flex flex-col">
                    <div className="flex justify-between items-start mb-2">
                       <span className={`px-2 py-0.5 rounded text-xs font-bold border ${sn.status === 'Ouvert' ? 'bg-red-900/30 text-red-400 border-red-800' : 'bg-blue-900/30 text-blue-400 border-blue-800'}`}>
@@ -351,6 +416,62 @@ export default function SiteManagerDashboard({ currentCompanyId }) {
               <div className="pt-4 flex justify-end space-x-3">
                 <button type="button" onClick={() => setShowTransferModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700">Annuler</button>
                 <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow">Valider</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - New Delivery */}
+      {showDeliveryModal && (
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
+              <h3 className="text-lg font-bold text-white">Nouvelle Livraison</h3>
+              <button onClick={() => setShowDeliveryModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+            <form onSubmit={handleAddDelivery} className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Heure</label>
+                <input required type="time" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newDelivery.time} onChange={e => setNewDelivery({...newDelivery, time: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Description</label>
+                <input required type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" placeholder="Ex: 10 palettes de ciment..." value={newDelivery.description} onChange={e => setNewDelivery({...newDelivery, description: e.target.value})} />
+              </div>
+              <div className="pt-4 flex justify-end space-x-3">
+                <button type="button" onClick={() => setShowDeliveryModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700">Annuler</button>
+                <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow">Ajouter</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - New Snag */}
+      {showSnagModal && (
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
+              <h3 className="text-lg font-bold text-white">Créer une réserve</h3>
+              <button onClick={() => setShowSnagModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+            <form onSubmit={handleAddSnag} className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Description du problème</label>
+                <textarea required className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none resize-none h-20" value={newSnag.description} onChange={e => setNewSnag({...newSnag, description: e.target.value})}></textarea>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Sous-traitant concerné</label>
+                <input required type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newSnag.subcontractor} onChange={e => setNewSnag({...newSnag, subcontractor: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Échéance</label>
+                <input required type="date" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newSnag.deadline} onChange={e => setNewSnag({...newSnag, deadline: e.target.value})} />
+              </div>
+              <div className="pt-4 flex justify-end space-x-3">
+                <button type="button" onClick={() => setShowSnagModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700">Annuler</button>
+                <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow">Enregistrer</button>
               </div>
             </form>
           </div>

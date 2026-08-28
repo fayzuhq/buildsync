@@ -7,7 +7,11 @@ export default function WorkerMobileView({ currentCompanyId, currentUser }) {
 
   const [shiftState, setShiftState] = useState('stopped'); // stopped, active, paused
   const [secondsElapsed, setSecondsElapsed] = useState(0);
+
   const [showEmergency, setShowEmergency] = useState(false);
+  const [showMeals, setShowMeals] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [showSafety, setShowSafety] = useState(false);
   const [showToast, setShowToast] = useState('');
 
   useEffect(() => {
@@ -46,6 +50,12 @@ export default function WorkerMobileView({ currentCompanyId, currentUser }) {
     const m = Math.floor((totalSeconds % 3600) / 60);
     const s = totalSeconds % 60;
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const handleScanTool = () => {
+     setShowToast("Outil Hilti TE 60 scanné et assigné à votre profil.");
+     setShowScanner(false);
+     setTimeout(() => setShowToast(''), 4000);
   };
 
   return (
@@ -114,15 +124,15 @@ export default function WorkerMobileView({ currentCompanyId, currentUser }) {
 
         {/* Field Utility Buttons */}
         <div className="grid grid-cols-2 gap-3">
-           <button className="bg-slate-800/90 border border-slate-700 p-4 rounded-xl flex flex-col items-center text-center hover:bg-slate-700/80 transition-colors">
+           <button onClick={() => setShowMeals(true)} className="bg-slate-800/90 border border-slate-700 p-4 rounded-xl flex flex-col items-center text-center hover:bg-slate-700/80 transition-colors">
              <span className="text-2xl mb-1">🍽️</span>
              <span className="text-xs text-slate-300 font-medium">Indemnités / Repas</span>
            </button>
-           <button className="bg-slate-800/90 border border-slate-700 p-4 rounded-xl flex flex-col items-center text-center hover:bg-slate-700/80 transition-colors">
+           <button onClick={() => setShowScanner(true)} className="bg-slate-800/90 border border-slate-700 p-4 rounded-xl flex flex-col items-center text-center hover:bg-slate-700/80 transition-colors">
              <span className="text-2xl mb-1">📱</span>
              <span className="text-xs text-slate-300 font-medium">Scanner un outil</span>
            </button>
-           <button className="col-span-2 bg-slate-800/90 border border-slate-700 p-4 rounded-xl flex items-center justify-between hover:bg-slate-700/80 transition-colors">
+           <button onClick={() => setShowSafety(true)} className="col-span-2 bg-slate-800/90 border border-slate-700 p-4 rounded-xl flex items-center justify-between hover:bg-slate-700/80 transition-colors">
              <div className="flex items-center space-x-3">
                <span className="text-2xl">👷</span>
                <span className="text-sm text-slate-300 font-medium">Consignes de sécurité (EPI)</span>
@@ -143,6 +153,61 @@ export default function WorkerMobileView({ currentCompanyId, currentUser }) {
           <span className="uppercase tracking-wide">Urgence Chantier</span>
         </button>
       </div>
+
+      {/* Meals Modal */}
+      {showMeals && (
+         <div className="fixed inset-0 bg-slate-950/95 flex flex-col justify-end z-50 p-4 pb-12 animate-in slide-in-from-bottom-full">
+           <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 shadow-2xl relative">
+              <button onClick={() => setShowMeals(false)} className="absolute top-4 right-4 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center text-slate-400">✕</button>
+              <h2 className="text-2xl font-bold text-white mb-6 text-center">Vos Indemnités</h2>
+              <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-4 text-center">
+                 <p className="text-slate-400 text-sm">Paniers repas validés cette semaine</p>
+                 <p className="text-4xl font-bold text-emerald-400 mt-2">4</p>
+              </div>
+              <p className="text-sm text-slate-400 text-center">Vos paniers sont automatiquement déclarés par votre Chef de chantier lors des pointages journaliers.</p>
+           </div>
+         </div>
+      )}
+
+      {/* Scanner Modal */}
+      {showScanner && (
+         <div className="fixed inset-0 bg-slate-950/95 flex flex-col justify-end z-50 p-4 pb-12 animate-in slide-in-from-bottom-full">
+           <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 shadow-2xl relative flex flex-col items-center">
+              <button onClick={() => setShowScanner(false)} className="absolute top-4 right-4 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center text-slate-400">✕</button>
+              <h2 className="text-2xl font-bold text-white mb-2 text-center">Scan QR Code</h2>
+              <p className="text-slate-400 text-sm text-center mb-6">Scannez un outil pour l'emprunter au dépôt.</p>
+              <div className="w-64 h-64 border-4 border-dashed border-blue-500 rounded-xl flex items-center justify-center bg-slate-800 mb-6 relative overflow-hidden">
+                 <div className="absolute w-full h-1 bg-blue-400/50 shadow-[0_0_10px_#60a5fa] top-1/2 animate-[pulse_2s_ease-in-out_infinite]"></div>
+                 <span className="text-slate-500 text-sm">Caméra...</span>
+              </div>
+              <button onClick={handleScanTool} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow">Simuler Scan Hilti</button>
+           </div>
+         </div>
+      )}
+
+      {/* Safety Drawer */}
+      {showSafety && (
+         <div className="fixed inset-0 bg-slate-950/95 flex flex-col justify-end z-50 p-4 pb-12 animate-in slide-in-from-bottom-full">
+           <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 shadow-2xl relative">
+              <button onClick={() => setShowSafety(false)} className="absolute top-4 right-4 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center text-slate-400">✕</button>
+              <h2 className="text-2xl font-bold text-white mb-4 text-center">Consignes (EPI)</h2>
+              <ul className="space-y-3">
+                 <li className="flex items-center space-x-3 bg-slate-800 p-4 rounded-xl border border-slate-700">
+                    <span className="text-3xl">🪖</span>
+                    <span className="text-white font-medium">Casque de chantier obligatoire</span>
+                 </li>
+                 <li className="flex items-center space-x-3 bg-slate-800 p-4 rounded-xl border border-slate-700">
+                    <span className="text-3xl">🥾</span>
+                    <span className="text-white font-medium">Chaussures de sécurité (S3)</span>
+                 </li>
+                 <li className="flex items-center space-x-3 bg-slate-800 p-4 rounded-xl border border-slate-700">
+                    <span className="text-3xl">🦺</span>
+                    <span className="text-white font-medium">Baudrier haute visibilité</span>
+                 </li>
+              </ul>
+           </div>
+         </div>
+      )}
 
       {/* Emergency Modal */}
       {showEmergency && (
