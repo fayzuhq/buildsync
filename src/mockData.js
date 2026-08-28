@@ -230,6 +230,15 @@ export const mockUsers = [
     companyId: 'c1',
     workerId: 'w2',
   },
+  {
+    id: 'u5',
+    name: 'Mairie de Paris',
+    email: 'client@paris.fr',
+    phone: '0100000000',
+    role: 'client',
+    companyId: 'c1',
+    siteId: 's1',
+  },
 ];
 
 export const mockEquipment = {
@@ -300,7 +309,7 @@ export const mockEquipment = {
 };
 
 export const mockQuotes = [
-  { id: 'q1', companyId: 'c1', siteId: 's1', client: 'Mairie de Paris', amount: 5000000, progressBilling: 30, paymentStatus: 'Payé' },
+  { id: 'q1', companyId: 'c1', siteId: 's1', client: 'Mairie de Paris', amount: 5000000, progressBilling: 30, paymentStatus: 'En attente' },
   { id: 'q2', companyId: 'c1', siteId: 's2', client: 'SCI Les Pins', amount: 1200000, progressBilling: 60, paymentStatus: 'En retard' },
   { id: 'q3', companyId: 'c2', siteId: 's3', client: 'M. Dubois', amount: 80000, progressBilling: 100, paymentStatus: 'Facturé' },
 ];

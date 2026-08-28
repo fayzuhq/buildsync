@@ -4,6 +4,7 @@ import SuperAdminDashboard from './components/SuperAdminDashboard';
 import CompanyAdminDashboard from './components/CompanyAdminDashboard';
 import SiteManagerDashboard from './components/SiteManagerDashboard';
 import WorkerMobileView from './components/WorkerMobileView';
+import ClientPortalView from './components/ClientPortalView';
 import LoginPage from './components/LoginPage';
 import {
   mockPlatformSettings, mockCompanies, mockSites, mockWorkers,
@@ -121,6 +122,13 @@ function App() {
                  sites={sites}
                  workers={workers} setWorkers={setWorkers}
                  leaveRequests={leaveRequests} setLeaveRequests={setLeaveRequests}
+               />;
+      case 'client':
+        return <ClientPortalView
+                 currentUser={activeUser}
+                 sites={sites}
+                 quotes={quotes} setQuotes={setQuotes}
+                 gedFolders={gedFolders}
                />;
       default:
         return <div className="text-white">Role not found</div>;

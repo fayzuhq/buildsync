@@ -14,6 +14,7 @@ export default function Navbar({ currentUser, impersonatedUser, stopImpersonatio
       case 'company_admin': return 'Admin Entreprise';
       case 'site_manager': return 'Chef de Chantier';
       case 'worker': return 'Compagnon';
+      case 'client': return "Maître d'Ouvrage";
       default: return role;
     }
   };
