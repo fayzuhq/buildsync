@@ -17,6 +17,10 @@ export default function CompanyAdminDashboard({
   const [showSubcontractorModal, setShowSubcontractorModal] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [showQuoteDetailModal, setShowQuoteDetailModal] = useState(false);
+  const [showDoeModal, setShowDoeModal] = useState(false);
+  const [doeProgress, setDoeProgress] = useState(0);
+  const [doeStep, setDoeStep] = useState('');
+  const [doeDone, setDoeDone] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState(null);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
@@ -510,7 +514,7 @@ export default function CompanyAdminDashboard({
                       </td>
                       <td className="px-5 py-4 text-amber-400/80 text-right font-mono">-{retenue.toLocaleString()} €</td>
                       <td className="px-5 py-4 text-center">
-                         <span className={`px-2 py-1 rounded-full text-xs font-bold border inline-block w-24 text-center ${quote.paymentStatus === 'Payé' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' : quote.paymentStatus === 'Facturé' ? 'bg-blue-900/30 text-blue-400 border-blue-800' : 'bg-red-900/30 text-red-400 border-red-800'}`}>
+                         <span className={`px-2 py-1 rounded-full text-xs font-bold border inline-block w-24 text-center ${quote.paymentStatus === 'Payé' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' : quote.paymentStatus === 'Facturé' || quote.paymentStatus === 'Signé / Validé' ? 'bg-blue-900/30 text-blue-400 border-blue-800' : 'bg-red-900/30 text-red-400 border-red-800'}`}>
                            {quote.paymentStatus}
                          </span>
                       </td>
@@ -789,6 +793,36 @@ export default function CompanyAdminDashboard({
 
       </div>
 
+      {showDoeModal && (
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-[60] p-4" onClick={() => !doeDone && setShowDoeModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
+              <h3 className="text-lg font-bold text-white">Générateur de DOE</h3>
+              {doeDone && <button onClick={() => setShowDoeModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>}
+            </div>
+            <div className="p-6">
+              {!doeDone ? (
+                <>
+                  <p className="text-sm text-slate-300 mb-4 text-center">{doeStep}</p>
+                  <div className="w-full bg-slate-900 rounded-full h-4 mb-4 border border-slate-700 overflow-hidden">
+                    <div className="bg-blue-500 h-4 rounded-full transition-all duration-500" style={{ width: `${doeProgress}%` }}></div>
+                  </div>
+                  <p className="text-xs text-slate-500 text-center">{doeProgress}% complété</p>
+                </>
+              ) : (
+                <div className="text-center space-y-4">
+                  <div className="text-emerald-400 text-5xl mb-2">✓</div>
+                  <p className="text-white font-bold">Dossier des Ouvrages Exécutés généré !</p>
+                  <button className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg w-full flex items-center justify-center shadow">
+                    <span className="mr-2">📄</span> Télécharger DOE_{selectedSite?.name.replace(/\s+/g, '_')}.pdf
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal - Fiche Chantier 360° */}
       {showSiteModal && selectedSite && (
         <div className="fixed inset-0 bg-slate-950/90 flex justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowSiteModal(false)}>
@@ -845,7 +879,29 @@ export default function CompanyAdminDashboard({
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                  {/* GED Folder UI */}
                  <div className="space-y-4">
-                    <h3 className="text-lg font-bold text-slate-200 border-b border-slate-700 pb-2 flex items-center"><span className="mr-2">📂</span> GED & Documents</h3>
+                    <h3 className="text-lg font-bold text-slate-200 border-b border-slate-700 pb-2 flex items-center justify-between">
+                       <span className="flex items-center"><span className="mr-2">📂</span> GED & Documents</span>
+                       <button
+                         onClick={() => {
+                           setShowDoeModal(true);
+                           setDoeProgress(0);
+                           setDoeStep('Compilation des plans...');
+                           setDoeDone(false);
+
+                           setTimeout(() => { setDoeProgress(33); setDoeStep('Génération des notices...'); }, 1000);
+                           setTimeout(() => { setDoeProgress(66); setDoeStep('Création du PDF...'); }, 2000);
+                           setTimeout(() => {
+                             setDoeProgress(100);
+                             setDoeStep('Terminé');
+                             setDoeDone(true);
+                             showToast('DOE généré avec succès !');
+                           }, 3000);
+                         }}
+                         className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1 rounded shadow"
+                       >
+                         Générer le DOE
+                       </button>
+                    </h3>
                     <div className="space-y-3">
                        {gedFolders.filter(f => f.siteId === selectedSite.id).map(folder => (
                           <div key={folder.id} className="bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
@@ -1202,7 +1258,7 @@ export default function CompanyAdminDashboard({
                  <p className="text-slate-400 flex items-center mt-1">Date : {selectedQuote.date || 'N/A'}</p>
               </div>
               <div className="flex items-center space-x-4">
-                 <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${selectedQuote.paymentStatus === 'Payé' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' : selectedQuote.paymentStatus === 'Facturé' ? 'bg-blue-900/30 text-blue-400 border-blue-800' : 'bg-red-900/30 text-red-400 border-red-800'}`}>
+                 <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${selectedQuote.paymentStatus === 'Payé' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' : selectedQuote.paymentStatus === 'Facturé' || selectedQuote.paymentStatus === 'Signé / Validé' ? 'bg-blue-900/30 text-blue-400 border-blue-800' : 'bg-red-900/30 text-red-400 border-red-800'}`}>
                     {selectedQuote.paymentStatus}
                  </span>
                  <button onClick={() => setShowQuoteDetailModal(false)} className="text-slate-400 hover:text-white text-2xl font-bold">✕</button>
