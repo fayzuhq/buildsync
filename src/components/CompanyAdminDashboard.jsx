@@ -16,10 +16,33 @@ export default function CompanyAdminDashboard({
   const [showPunchListModal, setShowPunchListModal] = useState(false);
   const [showSubcontractorModal, setShowSubcontractorModal] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [showQuoteDetailModal, setShowQuoteDetailModal] = useState(false);
+  const [selectedQuote, setSelectedQuote] = useState(null);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
   const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [selectedResourceForAssignment, setSelectedResourceForAssignment] = useState(null);
+
+  // Close modals on Escape key
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowAddWorker(false);
+        setShowSiteModal(false);
+        setShowNewSiteModal(false);
+        setShowPdfModal(false);
+        setShowPunchListModal(false);
+        setShowSubcontractorModal(false);
+        setShowQuoteModal(false);
+        setShowQuoteDetailModal(false);
+        setShowAssignmentModal(false);
+        setShowClientModal(false);
+        setShowCatalogModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const [newWorker, setNewWorker] = useState({ name: '', role: 'Compagnon', email: '', phone: '', caces: '' });
   const [newSite, setNewSite] = useState({ name: '', address: '', managerName: '', budget: '' });
@@ -121,7 +144,11 @@ export default function CompanyAdminDashboard({
        companyId: currentCompanyId,
        siteId: newQuoteSite,
        client: newQuoteClient,
-       amount: totalTTC,
+       amount: totalHT,
+       tvaRate: newQuoteTva,
+       totalTTC: totalTTC,
+       lines: [...quoteLines],
+       date: new Date().toISOString().split('T')[0],
        progressBilling: 0,
        paymentStatus: 'En attente'
     }]);
@@ -130,6 +157,11 @@ export default function CompanyAdminDashboard({
     setNewQuoteClient('');
     setNewQuoteSite('');
     showToast("Nouveau devis / situation généré avec succès.");
+  };
+
+  const openQuoteDetail = (quote) => {
+     setSelectedQuote(quote);
+     setShowQuoteDetailModal(true);
   };
 
   const handleAddClient = (e) => {
@@ -456,16 +488,17 @@ export default function CompanyAdminDashboard({
                 </thead>
                 <tbody className="divide-y divide-slate-700/50">
                   {companyQuotes.map(quote => {
-                     const acompte = quote.amount * 0.3;
-                     const retenue = quote.amount * 0.05;
+                     const ht = quote.amount; // For legacy mock data, amount is treated as HT in the display below
+                     const acompte = ht * 0.3;
+                     const retenue = ht * 0.05;
                      return (
-                    <tr key={quote.id} className="hover:bg-slate-700/30 transition-colors">
+                    <tr key={quote.id} onClick={() => openQuoteDetail(quote)} className="hover:bg-slate-700/30 transition-colors cursor-pointer">
                       <td className="px-5 py-4 font-mono text-slate-500">{quote.id}</td>
                       <td className="px-5 py-4 font-medium text-slate-200">
                          {quote.client} <br/>
                          <span className="text-xs text-slate-500">{companySites.find(s=>s.id === quote.siteId)?.name}</span>
                       </td>
-                      <td className="px-5 py-4 font-mono text-right text-slate-300">{quote.amount.toLocaleString()} €</td>
+                      <td className="px-5 py-4 font-mono text-right text-slate-300">{ht.toLocaleString()} €</td>
                       <td className="px-5 py-4 text-slate-400 text-right">{acompte.toLocaleString()} €</td>
                       <td className="px-5 py-4">
                          <div className="flex items-center space-x-2 justify-center">
@@ -1112,24 +1145,42 @@ export default function CompanyAdminDashboard({
               </div>
 
               <div className="flex flex-col items-end space-y-2 text-sm bg-slate-900/30 p-4 rounded-xl border border-slate-700/50 w-full sm:w-1/2 ml-auto">
-                 <div className="flex justify-between w-full">
-                    <span className="text-slate-400">Total HT</span>
-                    <span className="text-white font-mono">{quoteLines.reduce((sum, line) => sum + (line.quantity * line.unitPrice), 0).toLocaleString()} €</span>
-                 </div>
-                 <div className="flex justify-between w-full items-center">
-                    <span className="text-slate-400">TVA</span>
-                    <select className="bg-slate-800 border border-slate-700 rounded p-1 text-slate-300 outline-none text-right ml-2" value={newQuoteTva} onChange={e => setNewQuoteTva(parseFloat(e.target.value))}>
-                       <option value="20">20%</option>
-                       <option value="10">10% (Rénovation)</option>
-                       <option value="5.5">5.5% (Énergétique)</option>
-                       <option value="0">0% (Auto-liquidation)</option>
-                    </select>
-                 </div>
-                 <div className="border-t border-slate-700 w-full my-2"></div>
-                 <div className="flex justify-between w-full text-lg font-bold">
-                    <span className="text-white">Total TTC</span>
-                    <span className="text-blue-400 font-mono">{(quoteLines.reduce((sum, line) => sum + (line.quantity * line.unitPrice), 0) * (1 + newQuoteTva/100)).toLocaleString()} €</span>
-                 </div>
+                 {(() => {
+                    const tHT = quoteLines.reduce((sum, line) => sum + (line.quantity * line.unitPrice), 0);
+                    const tTTC = tHT * (1 + newQuoteTva/100);
+                    const acompte = tHT * 0.3;
+                    const retenue = tHT * 0.05;
+                    return (
+                       <>
+                         <div className="flex justify-between w-full">
+                            <span className="text-slate-400">Total HT</span>
+                            <span className="text-white font-mono">{tHT.toLocaleString()} €</span>
+                         </div>
+                         <div className="flex justify-between w-full items-center">
+                            <span className="text-slate-400">TVA</span>
+                            <select className="bg-slate-800 border border-slate-700 rounded p-1 text-slate-300 outline-none text-right ml-2" value={newQuoteTva} onChange={e => setNewQuoteTva(parseFloat(e.target.value))}>
+                               <option value="20">20%</option>
+                               <option value="10">10% (Rénovation)</option>
+                               <option value="5.5">5.5% (Énergétique)</option>
+                               <option value="0">0% (Auto-liquidation)</option>
+                            </select>
+                         </div>
+                         <div className="flex justify-between w-full">
+                            <span className="text-slate-500">Acompte (30%) HT</span>
+                            <span className="text-slate-400 font-mono">{acompte.toLocaleString()} €</span>
+                         </div>
+                         <div className="flex justify-between w-full">
+                            <span className="text-amber-500/80">Retenue Garantie (5%) HT</span>
+                            <span className="text-amber-500/80 font-mono">-{retenue.toLocaleString()} €</span>
+                         </div>
+                         <div className="border-t border-slate-700 w-full my-2"></div>
+                         <div className="flex justify-between w-full text-lg font-bold">
+                            <span className="text-white">Total TTC</span>
+                            <span className="text-blue-400 font-mono">{tTTC.toLocaleString()} €</span>
+                         </div>
+                       </>
+                    );
+                 })()}
               </div>
 
               <div className="pt-6 border-t border-slate-700 flex justify-end space-x-4">
@@ -1137,6 +1188,104 @@ export default function CompanyAdminDashboard({
                 <button type="submit" className="px-6 py-2.5 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow-lg transition-colors">Générer le Devis</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - Quote Viewer */}
+      {showQuoteDetailModal && selectedQuote && (
+        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-[60] p-4 overflow-y-auto" onClick={() => setShowQuoteDetailModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-4xl my-auto overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-slate-700 flex justify-between items-start bg-slate-900 sticky top-0 z-10">
+              <div>
+                 <h2 className="text-2xl font-bold text-white">Détail du Devis : {selectedQuote.id}</h2>
+                 <p className="text-slate-400 flex items-center mt-1">Date : {selectedQuote.date || 'N/A'}</p>
+              </div>
+              <div className="flex items-center space-x-4">
+                 <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${selectedQuote.paymentStatus === 'Payé' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' : selectedQuote.paymentStatus === 'Facturé' ? 'bg-blue-900/30 text-blue-400 border-blue-800' : 'bg-red-900/30 text-red-400 border-red-800'}`}>
+                    {selectedQuote.paymentStatus}
+                 </span>
+                 <button onClick={() => setShowQuoteDetailModal(false)} className="text-slate-400 hover:text-white text-2xl font-bold">✕</button>
+              </div>
+            </div>
+
+            <div className="p-8 space-y-8 bg-slate-100">
+               <div className="flex justify-between border-b-2 border-slate-300 pb-6">
+                  <div>
+                     <h3 className="text-2xl font-bold text-slate-800">{company.name}</h3>
+                     <p className="text-slate-500 text-sm mt-1">{company.contactEmail}</p>
+                     <p className="text-slate-500 text-sm">SIREN: {company.siren}</p>
+                  </div>
+                  <div className="text-right">
+                     <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">Client</p>
+                     <h4 className="text-xl font-bold text-slate-800">{selectedQuote.client}</h4>
+                     <p className="text-slate-500 text-sm mt-1">Chantier : {companySites.find(s=>s.id === selectedQuote.siteId)?.name}</p>
+                  </div>
+               </div>
+
+               <table className="w-full text-left text-sm mb-8">
+                  <thead className="bg-slate-200 text-slate-600">
+                     <tr>
+                        <th className="p-3">Désignation</th>
+                        <th className="p-3 text-center">Qté</th>
+                        <th className="p-3 text-center">Unité</th>
+                        <th className="p-3 text-right">P.U HT</th>
+                        <th className="p-3 text-right">Total HT</th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 text-slate-700">
+                     {selectedQuote.lines ? selectedQuote.lines.map((line, idx) => {
+                        const art = companyArticles.find(a => a.id === line.articleId);
+                        return (
+                        <tr key={idx}>
+                           <td className="p-3 font-medium">{art ? art.name : 'Article personnalisé'}</td>
+                           <td className="p-3 text-center">{line.quantity}</td>
+                           <td className="p-3 text-center">{art ? art.unit : '-'}</td>
+                           <td className="p-3 text-right">{(line.unitPrice).toLocaleString()} €</td>
+                           <td className="p-3 text-right font-bold">{(line.quantity * line.unitPrice).toLocaleString()} €</td>
+                        </tr>
+                     )}) : (
+                        <tr>
+                           <td className="p-3 font-medium">Prestation Globale (Legacy Quote)</td>
+                           <td className="p-3 text-center">1</td>
+                           <td className="p-3 text-center">forfait</td>
+                           <td className="p-3 text-right">{selectedQuote.amount.toLocaleString()} €</td>
+                           <td className="p-3 text-right font-bold">{selectedQuote.amount.toLocaleString()} €</td>
+                        </tr>
+                     )}
+                  </tbody>
+               </table>
+
+               <div className="flex justify-end">
+                  <div className="w-1/2 bg-slate-50 p-6 rounded-lg border border-slate-200 space-y-3 text-slate-700">
+                     <div className="flex justify-between">
+                        <span>Total HT</span>
+                        <span className="font-bold">{selectedQuote.amount.toLocaleString()} €</span>
+                     </div>
+                     <div className="flex justify-between">
+                        <span>TVA ({selectedQuote.tvaRate || 20}%)</span>
+                        <span>{selectedQuote.totalTTC ? (selectedQuote.totalTTC - selectedQuote.amount).toLocaleString() : (selectedQuote.amount * 0.2).toLocaleString()} €</span>
+                     </div>
+                     <div className="flex justify-between text-rose-600">
+                        <span>Acompte à la commande (30%)</span>
+                        <span>-{(selectedQuote.amount * 0.3).toLocaleString()} €</span>
+                     </div>
+                     <div className="flex justify-between text-amber-600">
+                        <span>Retenue de garantie (5%) HT</span>
+                        <span>-{(selectedQuote.amount * 0.05).toLocaleString()} €</span>
+                     </div>
+                     <div className="border-t-2 border-slate-300 pt-3 flex justify-between text-xl font-bold text-slate-900 mt-2">
+                        <span>Total TTC</span>
+                        <span>{selectedQuote.totalTTC ? selectedQuote.totalTTC.toLocaleString() : (selectedQuote.amount * 1.2).toLocaleString()} €</span>
+                     </div>
+                  </div>
+               </div>
+            </div>
+
+            <div className="p-5 border-t border-slate-700 bg-slate-900 flex justify-end space-x-4">
+              <button onClick={() => setShowQuoteDetailModal(false)} className="px-6 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Fermer</button>
+              <button className="px-6 py-2 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-500 shadow-lg transition-colors flex items-center"><span className="mr-2">🖨️</span> Imprimer / Télécharger</button>
+            </div>
           </div>
         </div>
       )}

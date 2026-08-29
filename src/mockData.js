@@ -23,7 +23,7 @@ export const mockCompanies = [
       signatureElectronique: true
     },
     licenseKey: 'BS-2024-BATI-PRO1',
-    licenseExpiresAt: '2025-12-31T23:59:59Z',
+    licenseExpiresAt: '2030-12-31T23:59:59Z',
     isRevoked: false
   },
   {
