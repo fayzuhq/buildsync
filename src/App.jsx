@@ -9,7 +9,7 @@ import LoginPage from './components/LoginPage';
 import {
   mockPlatformSettings, mockCompanies, mockSites, mockWorkers,
   mockEquipment, mockDeliveries, mockSnags, mockQuotes,
-  mockSubcontractors, mockGedFolders, mockAuditLogs, mockExpenses, mockLeaveRequests, mockNotifications
+  mockSubcontractors, mockGedFolders, mockAuditLogs, mockExpenses, mockLeaveRequests, mockNotifications, mockUsers, mockArticleCatalog
 } from './mockData';
 
 function App() {
@@ -18,7 +18,9 @@ function App() {
 
   // Lifted Global States
   const [globalSettings, setGlobalSettings] = useState(mockPlatformSettings);
+  const [users, setUsers] = useState(mockUsers);
   const [companies, setCompanies] = useState(mockCompanies);
+  const [articleCatalog, setArticleCatalog] = useState(mockArticleCatalog);
   const [sites, setSites] = useState(mockSites);
   const [workers, setWorkers] = useState(mockWorkers);
   const [equipment, setEquipment] = useState(mockEquipment);
@@ -53,7 +55,7 @@ function App() {
   };
 
   if (!currentUser) {
-    return <LoginPage onLogin={setCurrentUser} />;
+    return <LoginPage onLogin={setCurrentUser} users={users} />;
   }
 
   const activeUser = impersonatedUser || currentUser;
@@ -72,8 +74,26 @@ function App() {
     );
   }
 
-  // Tenant Maintenance Check (Bypass for super admin acting naturally, but applies if impersonating)
   const activeCompany = companies.find(c => c.id === activeUser.companyId);
+
+  // Global Lock Enforcement Check (Expired or Revoked License)
+  if (activeCompany && activeUser.role !== 'super_admin' && activeUser.role !== 'client') {
+    const isExpired = activeCompany.licenseExpiresAt && new Date(activeCompany.licenseExpiresAt) < new Date();
+    if (activeCompany.isRevoked || isExpired) {
+      return (
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center">
+          <div className="text-rose-500 text-6xl mb-4">🔒</div>
+          <h1 className="text-3xl font-bold text-white mb-2">Accès suspendu</h1>
+          <p className="text-slate-400 max-w-md">
+            Licence expirée ou révoquée par l'administrateur. Veuillez contacter le support.
+          </p>
+          <button onClick={handleLogout} className="mt-8 text-blue-400 hover:underline">Se déconnecter</button>
+        </div>
+      );
+    }
+  }
+
+  // Tenant Maintenance Check (Bypass for super admin acting naturally, but applies if impersonating)
   if (activeCompany && activeCompany.maintenanceMode && activeUser.role !== 'super_admin') {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col">
@@ -122,6 +142,8 @@ function App() {
                  snags={snags}
                  expenses={expenses}
                  leaveRequests={leaveRequests} setLeaveRequests={setLeaveRequests}
+                 users={users} setUsers={setUsers}
+                 articleCatalog={articleCatalog} setArticleCatalog={setArticleCatalog}
                />;
       case 'site_manager':
         return <SiteManagerDashboard

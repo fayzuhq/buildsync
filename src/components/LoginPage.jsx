@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
-import { mockUsers } from '../mockData';
-
-export default function LoginPage({ onLogin }) {
+export default function LoginPage({ onLogin, users }) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
 
   const handleManualLogin = (e) => {
     e.preventDefault();
     // Simulate finding user by email or phone
-    const user = mockUsers.find(u => u.email === identifier || u.phone === identifier);
+    const user = users.find(u => u.email === identifier || u.phone === identifier);
     if (user) {
       onLogin(user);
     } else {
@@ -17,7 +15,7 @@ export default function LoginPage({ onLogin }) {
   };
 
   const handleDemoLogin = (role) => {
-    const user = mockUsers.find(u => u.role === role);
+    const user = users.find(u => u.role === role);
     if (user) {
       onLogin(user);
     }

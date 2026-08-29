@@ -4,7 +4,7 @@ export default function CompanyAdminDashboard({
   currentCompanyId, companies, sites, setSites, workers, setWorkers,
   equipment, setEquipment, quotes, setQuotes, auditLogs,
   subcontractors, setSubcontractors, gedFolders, setGedFolders, snags, expenses,
-  leaveRequests, setLeaveRequests
+  leaveRequests, setLeaveRequests, users, setUsers, articleCatalog, setArticleCatalog
 }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddWorker, setShowAddWorker] = useState(false);
@@ -17,12 +17,20 @@ export default function CompanyAdminDashboard({
   const [showSubcontractorModal, setShowSubcontractorModal] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [selectedResourceForAssignment, setSelectedResourceForAssignment] = useState(null);
 
   const [newWorker, setNewWorker] = useState({ name: '', role: 'Compagnon', email: '', phone: '', caces: '' });
   const [newSite, setNewSite] = useState({ name: '', address: '', managerName: '', budget: '' });
   const [newSubcontractor, setNewSubcontractor] = useState({ name: '', specialty: '', contact: '', insuranceExpiry: '' });
-  const [newQuote, setNewQuote] = useState({ client: '', siteId: '', amount: '' });
+  const [newClient, setNewClient] = useState({ name: '', email: '', phone: '', siteId: '' });
+  const [newArticle, setNewArticle] = useState({ name: '', unit: 'u', defaultUnitPrice: '' });
+
+  const [quoteLines, setQuoteLines] = useState([{ articleId: '', quantity: 1, unitPrice: 0 }]);
+  const [newQuoteClient, setNewQuoteClient] = useState('');
+  const [newQuoteSite, setNewQuoteSite] = useState('');
+  const [newQuoteTva, setNewQuoteTva] = useState(20);
 
   const [toastMessage, setToastMessage] = useState('');
 
@@ -34,6 +42,7 @@ export default function CompanyAdminDashboard({
   const companyQuotes = quotes.filter(q => q.companyId === currentCompanyId);
   const companySubcontractors = subcontractors.filter(s => s.companyId === currentCompanyId);
   const companyLeaves = leaveRequests.filter(lr => lr.companyId === currentCompanyId && lr.status === 'En attente');
+  const companyArticles = articleCatalog.filter(a => a.companyId === currentCompanyId);
 
   const companyHeavyEq = equipment.heavyMachinery.filter(e => e.companyId === currentCompanyId);
   const companyLightEq = equipment.lightTools.filter(e => e.companyId === currentCompanyId);
@@ -104,18 +113,63 @@ export default function CompanyAdminDashboard({
 
   const handleAddQuote = (e) => {
     e.preventDefault();
+    const totalHT = quoteLines.reduce((sum, line) => sum + (line.quantity * line.unitPrice), 0);
+    const totalTTC = totalHT * (1 + newQuoteTva / 100);
+
     setQuotes([...quotes, {
        id: `q_new_${Date.now().toString().slice(-4)}`,
        companyId: currentCompanyId,
-       siteId: newQuote.siteId,
-       client: newQuote.client,
-       amount: parseInt(newQuote.amount) || 0,
+       siteId: newQuoteSite,
+       client: newQuoteClient,
+       amount: totalTTC,
        progressBilling: 0,
        paymentStatus: 'En attente'
     }]);
     setShowQuoteModal(false);
-    setNewQuote({ client: '', siteId: '', amount: '' });
-    showToast("Nouvelle situation / devis créé avec succès.");
+    setQuoteLines([{ articleId: '', quantity: 1, unitPrice: 0 }]);
+    setNewQuoteClient('');
+    setNewQuoteSite('');
+    showToast("Nouveau devis / situation généré avec succès.");
+  };
+
+  const handleAddClient = (e) => {
+    e.preventDefault();
+    setUsers([...users, {
+      id: `u_client_${Date.now()}`,
+      name: newClient.name,
+      email: newClient.email,
+      phone: newClient.phone,
+      role: 'client',
+      companyId: currentCompanyId,
+      siteId: newClient.siteId,
+    }]);
+    setShowClientModal(false);
+    setNewClient({ name: '', email: '', phone: '', siteId: '' });
+    showToast("Identifiants envoyés par email/SMS au client.");
+  };
+
+  const handleAddArticle = (e) => {
+    e.preventDefault();
+    setArticleCatalog([...articleCatalog, {
+       id: `art_new_${Date.now()}`,
+       companyId: currentCompanyId,
+       name: newArticle.name,
+       unit: newArticle.unit,
+       defaultUnitPrice: parseFloat(newArticle.defaultUnitPrice) || 0
+    }]);
+    setShowCatalogModal(false);
+    setNewArticle({ name: '', unit: 'u', defaultUnitPrice: '' });
+    showToast("Article ajouté au catalogue.");
+  };
+
+  const updateQuoteLine = (index, field, value) => {
+    const updatedLines = [...quoteLines];
+    updatedLines[index][field] = value;
+    if (field === 'articleId') {
+      const art = companyArticles.find(a => a.id === value);
+      if (art) updatedLines[index].unitPrice = art.defaultUnitPrice;
+    }
+    setQuoteLines(updatedLines);
   };
 
   const handleAssignResource = (e) => {
@@ -378,11 +432,15 @@ export default function CompanyAdminDashboard({
 
         {/* TAB 3: BILLING / QUOTES */}
         {activeTab === 'billing' && (
-          <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
-            <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-white">Suivi des Devis & Facturation BTP</h2>
-              <button onClick={() => setShowQuoteModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm">+ Nouvelle Situation</button>
-            </div>
+          <div className="space-y-6">
+            <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
+              <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
+                <h2 className="text-lg font-bold text-white">Suivi des Devis & Facturation BTP</h2>
+                <div className="flex space-x-2">
+                   <button onClick={() => setShowCatalogModal(true)} className="bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-1.5 px-3 rounded-lg shadow text-sm transition-colors">Catalogue d'articles</button>
+                   <button onClick={() => setShowQuoteModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm transition-colors">+ Créer un Devis</button>
+                </div>
+              </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-slate-300 text-sm">
                 <thead className="bg-slate-900/80 text-slate-400">
@@ -401,25 +459,25 @@ export default function CompanyAdminDashboard({
                      const acompte = quote.amount * 0.3;
                      const retenue = quote.amount * 0.05;
                      return (
-                    <tr key={quote.id} className="hover:bg-slate-700/30">
+                    <tr key={quote.id} className="hover:bg-slate-700/30 transition-colors">
                       <td className="px-5 py-4 font-mono text-slate-500">{quote.id}</td>
                       <td className="px-5 py-4 font-medium text-slate-200">
                          {quote.client} <br/>
                          <span className="text-xs text-slate-500">{companySites.find(s=>s.id === quote.siteId)?.name}</span>
                       </td>
-                      <td className="px-5 py-4 font-mono text-right">{quote.amount.toLocaleString()} €</td>
+                      <td className="px-5 py-4 font-mono text-right text-slate-300">{quote.amount.toLocaleString()} €</td>
                       <td className="px-5 py-4 text-slate-400 text-right">{acompte.toLocaleString()} €</td>
                       <td className="px-5 py-4">
                          <div className="flex items-center space-x-2 justify-center">
-                           <div className="flex-1 bg-slate-900 rounded-full h-2 w-16">
+                           <div className="flex-1 bg-slate-900 rounded-full h-2 w-16 shadow-inner">
                               <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${quote.progressBilling}%` }}></div>
                            </div>
-                           <span className="text-xs font-bold text-blue-400">{quote.progressBilling}%</span>
+                           <span className="text-xs font-bold text-blue-400 w-8">{quote.progressBilling}%</span>
                          </div>
                       </td>
-                      <td className="px-5 py-4 text-amber-400/80 text-right">-{retenue.toLocaleString()} €</td>
+                      <td className="px-5 py-4 text-amber-400/80 text-right font-mono">-{retenue.toLocaleString()} €</td>
                       <td className="px-5 py-4 text-center">
-                         <span className={`px-2 py-1 rounded text-xs font-semibold border ${quote.paymentStatus === 'Payé' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' : quote.paymentStatus === 'Facturé' ? 'bg-blue-900/30 text-blue-400 border-blue-800' : 'bg-red-900/30 text-red-400 border-red-800'}`}>
+                         <span className={`px-2 py-1 rounded-full text-xs font-bold border inline-block w-24 text-center ${quote.paymentStatus === 'Payé' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' : quote.paymentStatus === 'Facturé' ? 'bg-blue-900/30 text-blue-400 border-blue-800' : 'bg-red-900/30 text-red-400 border-red-800'}`}>
                            {quote.paymentStatus}
                          </span>
                       </td>
@@ -429,6 +487,7 @@ export default function CompanyAdminDashboard({
               </table>
             </div>
           </div>
+        </div>
         )}
 
         {/* TAB 4: SUBCONTRACTORS */}
@@ -706,6 +765,9 @@ export default function CompanyAdminDashboard({
                  <h2 className="text-2xl font-bold text-white">Fiche Chantier 360° : {selectedSite.name}</h2>
                  <p className="text-slate-400 flex items-center mt-1">📍 {selectedSite.address}</p>
               </div>
+              <button onClick={() => setShowClientModal(true)} className="ml-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-1.5 px-3 rounded-lg shadow text-sm transition-colors hidden sm:block">
+                 + Générer accès Client (Maître d'Ouvrage)
+              </button>
               <button onClick={() => setShowSiteModal(false)} className="text-slate-400 hover:text-white text-2xl font-bold">✕</button>
             </div>
             <div className="p-6 space-y-6">
@@ -986,33 +1048,177 @@ export default function CompanyAdminDashboard({
         </div>
       )}
 
-      {/* Modal - New Quote / Billing */}
+      {/* Modal - New Quote / Multi-line Builder */}
       {showQuoteModal && (
-        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-50 p-4" onClick={() => setShowQuoteModal(false)}>
+        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setShowQuoteModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-4xl overflow-hidden my-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900 sticky top-0 z-10">
+              <h3 className="text-xl font-bold text-white">Créateur de Devis Multi-lignes</h3>
+              <button onClick={() => setShowQuoteModal(false)} className="text-slate-400 hover:text-white text-2xl">✕</button>
+            </div>
+            <form onSubmit={handleAddQuote} className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Client (Nom ou Entité)</label>
+                  <input required type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newQuoteClient} onChange={e => setNewQuoteClient(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Chantier Associé</label>
+                  <select required className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newQuoteSite} onChange={e => setNewQuoteSite(e.target.value)}>
+                    <option value="">Sélectionnez un chantier...</option>
+                    {companySites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="border border-slate-700 rounded-xl bg-slate-900/50 overflow-hidden">
+                 <div className="grid grid-cols-12 gap-2 text-xs font-bold text-slate-400 uppercase bg-slate-900 p-3 border-b border-slate-700">
+                    <div className="col-span-6">Désignation (Article du catalogue)</div>
+                    <div className="col-span-2 text-center">Quantité</div>
+                    <div className="col-span-2 text-right">P.U HT</div>
+                    <div className="col-span-2 text-right">Total HT</div>
+                 </div>
+                 <div className="p-3 space-y-3">
+                    {quoteLines.map((line, idx) => {
+                       const art = companyArticles.find(a => a.id === line.articleId);
+                       const unit = art ? art.unit : '-';
+                       const lineTotal = line.quantity * line.unitPrice;
+                       return (
+                       <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                          <div className="col-span-6 flex space-x-2">
+                             <button type="button" onClick={() => setQuoteLines(quoteLines.filter((_, i) => i !== idx))} className="text-slate-500 hover:text-rose-400 p-1">✕</button>
+                             <select required className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-slate-200 outline-none focus:border-blue-500 text-sm" value={line.articleId} onChange={(e) => updateQuoteLine(idx, 'articleId', e.target.value)}>
+                                <option value="">Sélectionnez un article...</option>
+                                {companyArticles.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                             </select>
+                          </div>
+                          <div className="col-span-2 flex items-center space-x-1">
+                             <input required type="number" min="0.1" step="0.1" className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white outline-none focus:border-blue-500 text-sm text-center" value={line.quantity} onChange={(e) => updateQuoteLine(idx, 'quantity', parseFloat(e.target.value) || 0)} />
+                             <span className="text-slate-500 text-xs w-6">{unit}</span>
+                          </div>
+                          <div className="col-span-2 relative">
+                             <input required type="number" step="0.01" className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white outline-none focus:border-blue-500 text-sm text-right pr-6" value={line.unitPrice} onChange={(e) => updateQuoteLine(idx, 'unitPrice', parseFloat(e.target.value) || 0)} />
+                             <span className="absolute right-2 top-2.5 text-slate-500 text-xs">€</span>
+                          </div>
+                          <div className="col-span-2 text-right font-mono text-slate-300 text-sm font-medium">
+                             {lineTotal.toLocaleString()} €
+                          </div>
+                       </div>
+                    )})}
+                    <button type="button" onClick={() => setQuoteLines([...quoteLines, { articleId: '', quantity: 1, unitPrice: 0 }])} className="text-blue-400 hover:text-blue-300 text-sm font-bold flex items-center mt-2 p-1">
+                       + Ajouter une ligne
+                    </button>
+                 </div>
+              </div>
+
+              <div className="flex flex-col items-end space-y-2 text-sm bg-slate-900/30 p-4 rounded-xl border border-slate-700/50 w-full sm:w-1/2 ml-auto">
+                 <div className="flex justify-between w-full">
+                    <span className="text-slate-400">Total HT</span>
+                    <span className="text-white font-mono">{quoteLines.reduce((sum, line) => sum + (line.quantity * line.unitPrice), 0).toLocaleString()} €</span>
+                 </div>
+                 <div className="flex justify-between w-full items-center">
+                    <span className="text-slate-400">TVA</span>
+                    <select className="bg-slate-800 border border-slate-700 rounded p-1 text-slate-300 outline-none text-right ml-2" value={newQuoteTva} onChange={e => setNewQuoteTva(parseFloat(e.target.value))}>
+                       <option value="20">20%</option>
+                       <option value="10">10% (Rénovation)</option>
+                       <option value="5.5">5.5% (Énergétique)</option>
+                       <option value="0">0% (Auto-liquidation)</option>
+                    </select>
+                 </div>
+                 <div className="border-t border-slate-700 w-full my-2"></div>
+                 <div className="flex justify-between w-full text-lg font-bold">
+                    <span className="text-white">Total TTC</span>
+                    <span className="text-blue-400 font-mono">{(quoteLines.reduce((sum, line) => sum + (line.quantity * line.unitPrice), 0) * (1 + newQuoteTva/100)).toLocaleString()} €</span>
+                 </div>
+              </div>
+
+              <div className="pt-6 border-t border-slate-700 flex justify-end space-x-4">
+                <button type="button" onClick={() => setShowQuoteModal(false)} className="px-6 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
+                <button type="submit" className="px-6 py-2.5 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow-lg transition-colors">Générer le Devis</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - Article Catalog Manager */}
+      {showCatalogModal && (
+        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-50 p-4" onClick={() => setShowCatalogModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
+              <h3 className="text-lg font-bold text-white">Catalogue d'Articles BTP</h3>
+              <button onClick={() => setShowCatalogModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+            <div className="p-5 max-h-64 overflow-y-auto space-y-2 border-b border-slate-700/50">
+               {companyArticles.map(art => (
+                  <div key={art.id} className="flex justify-between items-center bg-slate-900 p-3 rounded border border-slate-700">
+                     <span className="text-white font-medium text-sm">{art.name} <span className="text-slate-500 text-xs ml-1">({art.unit})</span></span>
+                     <span className="text-blue-400 font-mono text-sm">{art.defaultUnitPrice} € HT</span>
+                  </div>
+               ))}
+               {companyArticles.length === 0 && <p className="text-slate-500 text-sm text-center">Aucun article dans le catalogue.</p>}
+            </div>
+            <form onSubmit={handleAddArticle} className="p-5 bg-slate-900/30">
+              <h4 className="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider">Créer un nouvel article</h4>
+              <div className="grid grid-cols-12 gap-3 mb-4">
+                 <div className="col-span-6">
+                   <input required type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none text-sm" placeholder="Désignation..." value={newArticle.name} onChange={e => setNewArticle({...newArticle, name: e.target.value})} />
+                 </div>
+                 <div className="col-span-3">
+                   <select className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none text-sm" value={newArticle.unit} onChange={e => setNewArticle({...newArticle, unit: e.target.value})}>
+                     <option value="u">Unité (u)</option>
+                     <option value="m">Mètre (m)</option>
+                     <option value="m²">Mètre² (m²)</option>
+                     <option value="m³">Mètre³ (m³)</option>
+                     <option value="L">Litre (L)</option>
+                     <option value="h">Heure (h)</option>
+                     <option value="forfait">Forfait</option>
+                   </select>
+                 </div>
+                 <div className="col-span-3 relative">
+                   <input required type="number" step="0.01" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none text-sm text-right pr-6" placeholder="0.00" value={newArticle.defaultUnitPrice} onChange={e => setNewArticle({...newArticle, defaultUnitPrice: e.target.value})} />
+                   <span className="absolute right-2 top-2 text-slate-500 text-xs">€</span>
+                 </div>
+              </div>
+              <div className="flex justify-end">
+                <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow text-sm">Ajouter au catalogue</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - Client Onboarding */}
+      {showClientModal && (
+        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-[70] p-4" onClick={() => setShowClientModal(false)}>
           <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
-              <h3 className="text-lg font-bold text-white">Nouvelle Situation / Devis</h3>
-              <button onClick={() => setShowQuoteModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
+              <h3 className="text-lg font-bold text-white">Générer accès Maître d'Ouvrage</h3>
+              <button onClick={() => setShowClientModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
             </div>
-            <form onSubmit={handleAddQuote} className="p-5 space-y-4">
+            <form onSubmit={handleAddClient} className="p-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Client</label>
-                <input required type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newQuote.client} onChange={e => setNewQuote({...newQuote, client: e.target.value})} />
+                <label className="block text-sm font-medium text-slate-300 mb-1">Nom du Client / Entité</label>
+                <input required type="text" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newClient.name} onChange={e => setNewClient({...newClient, name: e.target.value})} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Chantier Associé</label>
-                <select required className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newQuote.siteId} onChange={e => setNewQuote({...newQuote, siteId: e.target.value})}>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Chantier Associé (Permis de lecture)</label>
+                <select required className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newClient.siteId} onChange={e => setNewClient({...newClient, siteId: e.target.value})}>
                   <option value="">Sélectionnez un chantier</option>
                   {companySites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Montant HT (€)</label>
-                <input required type="number" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newQuote.amount} onChange={e => setNewQuote({...newQuote, amount: e.target.value})} />
+                <label className="block text-sm font-medium text-slate-300 mb-1">Email de contact</label>
+                <input required type="email" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newClient.email} onChange={e => setNewClient({...newClient, email: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Téléphone (SMS Onboarding)</label>
+                <input required type="tel" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:border-blue-500 focus:ring-1 outline-none" value={newClient.phone} onChange={e => setNewClient({...newClient, phone: e.target.value})} />
               </div>
               <div className="pt-4 flex justify-end space-x-3">
-                <button type="button" onClick={() => setShowQuoteModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
-                <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow">Créer</button>
+                <button type="button" onClick={() => setShowClientModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
+                <button type="submit" className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-500 shadow">Générer & Envoyer Accès</button>
               </div>
             </form>
           </div>
