@@ -9,7 +9,7 @@ import LoginPage from './components/LoginPage';
 import {
   mockPlatformSettings, mockCompanies, mockSites, mockWorkers,
   mockEquipment, mockDeliveries, mockSnags, mockQuotes,
-  mockSubcontractors, mockGedFolders, mockAuditLogs, mockExpenses, mockLeaveRequests, mockNotifications, mockUsers, mockArticleCatalog
+  mockSubcontractors, mockGedFolders, mockAuditLogs, mockExpenses, mockLeaveRequests, mockNotifications, mockUsers, mockArticleCatalog, mockSupportTickets
 } from './mockData';
 
 function App() {
@@ -33,6 +33,7 @@ function App() {
   const [expenses, setExpenses] = useState(mockExpenses);
   const [leaveRequests, setLeaveRequests] = useState(mockLeaveRequests);
   const [notifications, setNotifications] = useState(mockNotifications);
+  const [supportTickets, setSupportTickets] = useState(mockSupportTickets);
 
   const addNotification = (title, message, roleTarget) => {
     setNotifications(prev => [{
@@ -121,12 +122,20 @@ function App() {
     switch (activeUser.role) {
       case 'super_admin':
         return <SuperAdminDashboard
+                 currentUser={currentUser}
                  setImpersonatedUser={setImpersonatedUser}
                  globalSettings={globalSettings}
                  setGlobalSettings={setGlobalSettings}
                  companies={companies}
                  setCompanies={setCompanies}
+                 users={users} setUsers={setUsers}
+                 sites={sites} setSites={setSites}
+                 workers={workers} setWorkers={setWorkers}
+                 quotes={quotes} setQuotes={setQuotes}
+                 supportTickets={supportTickets} setSupportTickets={setSupportTickets}
                  auditLogs={auditLogs}
+                 expenses={expenses}
+                 snags={snags}
                />;
       case 'company_admin':
         return <CompanyAdminDashboard

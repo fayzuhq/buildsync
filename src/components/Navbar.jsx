@@ -39,8 +39,8 @@ export default function Navbar({ currentUser, impersonatedUser, stopImpersonatio
     <>
       {impersonatedUser && (
         <div className="bg-amber-600 text-white text-center py-1.5 text-sm font-semibold flex justify-center items-center space-x-4 shadow-inner">
-          <span>⚠️ Mode Impersonation Actif : Vous naviguez en tant que {companyName}</span>
-          <button onClick={stopImpersonation} className="bg-amber-800 hover:bg-amber-700 px-3 py-0.5 rounded text-xs transition-colors border border-amber-900">Quitter l'impersonation</button>
+          <span>⚠️ Mode Impersonation : Vous naviguez en tant que {impersonatedUser.name} ({getRoleLabel(impersonatedUser.role)} - {companyName})</span>
+          <button onClick={stopImpersonation} className="bg-amber-800 hover:bg-amber-700 px-3 py-0.5 rounded text-xs transition-colors border border-amber-900 shadow">Quitter l'impersonation</button>
         </div>
       )}
       <header className="bg-slate-900 border-b border-slate-800 shadow-md">

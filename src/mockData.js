@@ -366,6 +366,26 @@ export const mockNotifications = [
   { id: 'n3', title: 'Nouvelle demande', message: 'Luc Durand a posé une demande de congé.', date: 'Il y a 3 jours', read: true, roleTarget: 'company_admin' },
 ];
 
+export const mockSupportTickets = [
+  {
+    id: 't1', companyId: 'c1', companyName: 'BâtiPro Construct',
+    author: 'Jean Dupont', role: 'company_admin',
+    subject: 'Problème de facturation', priority: 'Moyenne', status: 'Ouvert',
+    messages: [
+      { sender: 'Jean Dupont', text: 'Bonjour, la facture de Mairie de Paris ne s\'affiche pas.', date: '2024-09-12 10:00' }
+    ]
+  },
+  {
+    id: 't2', companyId: 'c2', companyName: 'ÉcoRénov',
+    author: 'Marc Leroi', role: 'company_admin',
+    subject: 'Bug sur la GED', priority: 'Urgente', status: 'En cours',
+    messages: [
+      { sender: 'Marc Leroi', text: 'Impossible d\'uploader un fichier de plus de 50Mo.', date: '2024-09-11 14:30' },
+      { sender: 'Support', text: 'Nous investiguons le problème, nous revenons vers vous.', date: '2024-09-11 15:00' }
+    ]
+  }
+];
+
 export const mockArticleCatalog = [
   { id: 'art1', companyId: 'c1', name: 'Peinture Acrylique Blanche', unit: 'm²', defaultUnitPrice: 15.5 },
   { id: 'art2', companyId: 'c1', name: 'Pose de Placo BA13', unit: 'm²', defaultUnitPrice: 45.0 },
