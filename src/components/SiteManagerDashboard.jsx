@@ -29,6 +29,13 @@ export default function SiteManagerDashboard({
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [newExpense, setNewExpense] = useState({ amount: '', supplier: '', description: '', receipt: null });
 
+  const [showPvModal, setShowPvModal] = useState(false);
+  const [isPvGenerating, setIsPvGenerating] = useState(false);
+
+  const [showScannerModal, setShowScannerModal] = useState(false);
+  const [scanResult, setScanResult] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
+
   // Timesheet local state
   const [timesheet, setTimesheet] = useState(siteWorkers.map(w => ({
      workerId: w.id, present: true, hours: '8h', mealVoucher: true
@@ -254,8 +261,11 @@ export default function SiteManagerDashboard({
 
             {/* Workers Check-in */}
             <div className="lg:col-span-2 bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden">
-              <div className="p-5 border-b border-slate-700 bg-slate-900/50">
+              <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
                 <h2 className="text-lg font-bold text-white">Pointages de l'équipe (Timesheet)</h2>
+                <button onClick={() => setShowScannerModal(true)} className="bg-slate-700 hover:bg-slate-600 text-white font-bold py-1 px-3 rounded text-sm transition-colors shadow flex items-center border border-slate-600">
+                  <span className="mr-2">📷</span> Contrôle Carte BTP (Scan)
+                </button>
               </div>
               <div className="overflow-x-auto">
                  <table className="w-full text-left text-slate-300 text-sm">
@@ -489,7 +499,10 @@ export default function SiteManagerDashboard({
         <div className="bg-slate-800/90 rounded-xl border border-slate-700 shadow overflow-hidden mt-4">
           <div className="p-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
              <h2 className="text-lg font-bold text-white">Réserves & Contrôle Qualité</h2>
-             <button onClick={() => setShowSnagModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-3 rounded text-sm transition-colors">+ Créer une réserve</button>
+             <div className="flex space-x-3">
+               <button onClick={() => setShowPvModal(true)} className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-1 px-3 rounded text-sm transition-colors shadow-lg">Générer le PV de Réception (Fin de chantier)</button>
+               <button onClick={() => setShowSnagModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-3 rounded text-sm transition-colors">+ Créer une réserve</button>
+             </div>
           </div>
           <div className="p-5 grid gap-4 grid-cols-1 md:grid-cols-2">
              {siteSnags.map(sn => (
@@ -575,6 +588,119 @@ export default function SiteManagerDashboard({
                 <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow transition-colors">Enregistrer</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showScannerModal && (
+        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-[60] p-4" onClick={() => setShowScannerModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
+              <h3 className="text-lg font-bold text-white">Scanner Carte BTP Pro</h3>
+              <button onClick={() => setShowScannerModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+            <div className="p-6">
+              {!scanResult ? (
+                <div className="space-y-6 text-center">
+                  <div className="w-full h-48 bg-slate-900 rounded-lg border-2 border-slate-600 border-dashed relative overflow-hidden flex items-center justify-center">
+                    {isScanning ? (
+                       <div className="absolute inset-0 bg-blue-500/20 animate-pulse border-b-4 border-blue-500"></div>
+                    ) : (
+                       <span className="text-slate-500 font-medium">Flux caméra...</span>
+                    )}
+                    <div className="absolute inset-4 border border-blue-500/50 rounded-lg">
+                       <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-blue-500"></div>
+                       <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-blue-500"></div>
+                       <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-blue-500"></div>
+                       <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-blue-500"></div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsScanning(true);
+                      setTimeout(() => {
+                        const randomWorker = siteWorkers[Math.floor(Math.random() * siteWorkers.length)] || { name: 'Ouvrier Inconnu', trade: 'N/A' };
+                        setScanResult(randomWorker);
+                        setWorkers(workers.map(w => w.id === randomWorker.id ? { ...w, carteBTP: 'Valide' } : w));
+                        setIsScanning(false);
+                      }, 1500);
+                    }}
+                    disabled={isScanning}
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded w-full shadow"
+                  >
+                    {isScanning ? 'Analyse en cours...' : 'Simuler Scan Carte'}
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center space-y-4">
+                  <div className="w-24 h-24 bg-emerald-900/50 rounded-full mx-auto flex items-center justify-center border-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]">
+                     <span className="text-4xl text-emerald-400">✓</span>
+                  </div>
+                  <div className="bg-emerald-900/20 border border-emerald-800 rounded-lg p-3">
+                     <p className="text-emerald-400 font-bold mb-1">Carte BTP Valide - Vérification URSSAF OK</p>
+                  </div>
+                  <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 flex items-center text-left">
+                     <div className="w-16 h-16 bg-slate-700 rounded-lg mr-4 flex items-center justify-center text-2xl">👤</div>
+                     <div>
+                        <p className="font-bold text-white text-lg">{scanResult.name}</p>
+                        <p className="text-slate-400">{scanResult.trade}</p>
+                     </div>
+                  </div>
+                  <button onClick={() => setScanResult(null)} className="w-full mt-4 bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded transition-colors">Scanner un autre ouvrier</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPvModal && (
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4" onClick={() => setShowPvModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
+              <h3 className="text-xl font-bold text-white flex items-center"><span className="mr-2">📝</span> PV de Réception (Fin de chantier)</h3>
+              <button onClick={() => setShowPvModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl text-center">
+                  <p className="text-slate-400 text-sm mb-1 uppercase tracking-wider">Total Réserves</p>
+                  <p className="text-3xl font-bold text-white">{siteSnags.length}</p>
+                </div>
+                <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl text-center">
+                  <p className="text-slate-400 text-sm mb-1 uppercase tracking-wider">Réserves Non Levées</p>
+                  <p className="text-3xl font-bold text-amber-400">{siteSnags.filter(s => s.status !== 'Terminé').length}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-slate-300 font-bold mb-2">Signature du Client (Maître d'Ouvrage) :</p>
+                <div className="w-full h-48 bg-slate-100 rounded-lg border-2 border-dashed border-slate-400 flex items-center justify-center cursor-crosshair">
+                  <span className="text-slate-400 font-medium italic">Zone de signature (Canvas) sur tablette</span>
+                </div>
+              </div>
+
+              <div className="pt-4 flex justify-end space-x-3 border-t border-slate-700">
+                <button type="button" onClick={() => setShowPvModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
+                <button
+                  onClick={() => {
+                    setIsPvGenerating(true);
+                    setTimeout(() => {
+                      if (activeSite) {
+                        activeSite.status = 'Livré';
+                      }
+                      setIsPvGenerating(false);
+                      setShowPvModal(false);
+                      showToast("PV généré avec succès, chantier marqué comme 'Livré' !");
+                    }, 2000);
+                  }}
+                  disabled={isPvGenerating}
+                  className="px-6 py-2 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-500 shadow transition-colors flex items-center"
+                >
+                  {isPvGenerating ? 'Génération...' : 'Valider et Clôturer le Chantier'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

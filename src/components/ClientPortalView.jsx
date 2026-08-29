@@ -8,6 +8,8 @@ export default function ClientPortalView({ currentUser, sites, quotes, setQuotes
   const [activeTab, setActiveTab] = useState('timeline');
   const [toastMessage, setToastMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [signingQuoteId, setSigningQuoteId] = useState(null);
 
   if (!activeSite) {
     return <div className="p-4 text-center text-slate-400 mt-10">Aucun projet associé trouvé pour ce compte client.</div>;
@@ -27,6 +29,19 @@ export default function ClientPortalView({ currentUser, sites, quotes, setQuotes
       setIsProcessing(false);
       showToast("Paiement validé avec succès. Merci de votre confiance !");
     }, 2000);
+  };
+
+  const handleSignQuote = (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    setTimeout(() => {
+      setQuotes(quotes.map(q => q.id === signingQuoteId ? { ...q, paymentStatus: 'Signé / Validé' } : q));
+      addNotification("Devis signé électroniquement", `Le client ${currentUser.name} a signé le devis ${signingQuoteId}.`, "company_admin");
+      setIsProcessing(false);
+      setShowSignatureModal(false);
+      setSigningQuoteId(null);
+      showToast("Devis signé avec succès !");
+    }, 1500);
   };
 
   const tabs = [
@@ -194,13 +209,25 @@ export default function ClientPortalView({ currentUser, sites, quotes, setQuotes
                           <p className="text-3xl font-bold text-blue-400 font-mono">{quote.amount.toLocaleString()} €</p>
                        </div>
 
-                       {quote.paymentStatus !== 'Payé' ? (
+                       {quote.paymentStatus === 'En attente' ? (
+                          <button
+                             onClick={() => { setSigningQuoteId(quote.id); setShowSignatureModal(true); }}
+                             disabled={isProcessing}
+                             className={`w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center ${isProcessing ? 'opacity-70 cursor-not-allowed' : 'hover:bg-blue-500 hover:shadow-blue-500/20'}`}
+                          >
+                             <span className="text-xl mr-2">✍️</span> {isProcessing ? 'Traitement...' : 'Signer le devis électroniquement'}
+                          </button>
+                       ) : quote.paymentStatus !== 'Payé' && quote.paymentStatus !== 'Signé / Validé' ? (
                           <button
                              onClick={() => handleSimulatePayment(quote.id)}
                              disabled={isProcessing}
                              className={`w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center ${isProcessing ? 'opacity-70 cursor-not-allowed' : 'hover:bg-blue-500 hover:shadow-blue-500/20'}`}
                           >
                              <span className="text-xl mr-2">💳</span> {isProcessing ? 'Traitement...' : 'Payer en ligne sécurisé'}
+                          </button>
+                       ) : quote.paymentStatus === 'Signé / Validé' ? (
+                          <button className="w-full bg-slate-800 text-emerald-400 border border-emerald-900 font-bold py-3 px-6 rounded-xl flex items-center justify-center cursor-default">
+                             <span className="text-xl mr-2">✓</span> Devis Signé
                           </button>
                        ) : (
                           <button className="w-full bg-slate-800 text-emerald-400 border border-emerald-900 font-bold py-3 px-6 rounded-xl flex items-center justify-center cursor-default">
@@ -219,6 +246,31 @@ export default function ClientPortalView({ currentUser, sites, quotes, setQuotes
                  </div>
               )}
            </div>
+        </div>
+      )}
+
+      {showSignatureModal && (
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4" onClick={() => setShowSignatureModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
+              <h3 className="text-lg font-bold text-white">Signature électronique</h3>
+              <button onClick={() => setShowSignatureModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+            <form onSubmit={handleSignQuote} className="p-5 space-y-4">
+              <div>
+                <p className="text-sm text-slate-300 mb-2">Veuillez signer ci-dessous pour valider le devis.</p>
+                <div className="w-full h-40 bg-slate-100 rounded-lg border-2 border-dashed border-slate-400 flex items-center justify-center cursor-crosshair">
+                  <span className="text-slate-400 font-medium italic">Zone de signature (Canvas)</span>
+                </div>
+              </div>
+              <div className="pt-4 flex justify-end space-x-3">
+                <button type="button" onClick={() => setShowSignatureModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors">Annuler</button>
+                <button type="submit" disabled={isProcessing} className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow transition-colors flex items-center">
+                  {isProcessing ? 'Validation...' : 'Confirmer et Signer'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
