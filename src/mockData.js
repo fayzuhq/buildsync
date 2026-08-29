@@ -21,7 +21,10 @@ export const mockCompanies = [
       exportPaie: true,
       situations: true,
       signatureElectronique: true
-    }
+    },
+    licenseKey: 'BS-2024-BATI-PRO1',
+    licenseExpiresAt: '2025-12-31T23:59:59Z',
+    isRevoked: false
   },
   {
     id: 'c2',
@@ -40,7 +43,10 @@ export const mockCompanies = [
       exportPaie: true,
       situations: false,
       signatureElectronique: false
-    }
+    },
+    licenseKey: 'BS-2024-ARTI-STAR',
+    licenseExpiresAt: '2024-10-15T23:59:59Z',
+    isRevoked: false
   },
   {
     id: 'c3',
@@ -59,7 +65,10 @@ export const mockCompanies = [
       exportPaie: true,
       situations: true,
       signatureElectronique: false
-    }
+    },
+    licenseKey: 'BS-2023-GROS-PRO1',
+    licenseExpiresAt: '2023-12-31T23:59:59Z',
+    isRevoked: true
   },
 ];
 
@@ -355,4 +364,12 @@ export const mockNotifications = [
   { id: 'n1', title: 'Paiement Stripe reçu', message: 'Mairie de Paris a réglé l\'acompte.', date: 'Il y a 2 heures', read: false, roleTarget: 'company_admin' },
   { id: 'n2', title: 'Assurance décennale', message: 'L\'assurance de Elec 2000 est expirée.', date: 'Hier', read: false, roleTarget: 'company_admin' },
   { id: 'n3', title: 'Nouvelle demande', message: 'Luc Durand a posé une demande de congé.', date: 'Il y a 3 jours', read: true, roleTarget: 'company_admin' },
+];
+
+export const mockArticleCatalog = [
+  { id: 'art1', companyId: 'c1', name: 'Peinture Acrylique Blanche', unit: 'm²', defaultUnitPrice: 15.5 },
+  { id: 'art2', companyId: 'c1', name: 'Pose de Placo BA13', unit: 'm²', defaultUnitPrice: 45.0 },
+  { id: 'art3', companyId: 'c1', name: 'Tirage de Câble Électrique', unit: 'ml', defaultUnitPrice: 8.5 },
+  { id: 'art4', companyId: 'c1', name: 'Location Grue Mobile', unit: 'j', defaultUnitPrice: 850.0 },
+  { id: 'art5', companyId: 'c1', name: 'Main d\'œuvre Ouvrier Spécialisé', unit: 'h', defaultUnitPrice: 45.0 }
 ];

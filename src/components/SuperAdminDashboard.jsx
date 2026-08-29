@@ -6,9 +6,12 @@ export default function SuperAdminDashboard({ setImpersonatedUser, globalSetting
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showFeatureModal, setShowFeatureModal] = useState(false);
+  const [showLicenseModal, setShowLicenseModal] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [logCompanyFilter, setLogCompanyFilter] = useState('All');
   const [toastMessage, setToastMessage] = useState('');
+
+  const [licenseConfig, setLicenseConfig] = useState({ duration: '12', planType: 'Starter' });
 
   // Form state for new company
   const [newCompany, setNewCompany] = useState({
@@ -67,8 +70,37 @@ export default function SuperAdminDashboard({ setImpersonatedUser, globalSetting
 
   const handleSaveFeatures = (e) => {
     e.preventDefault();
-    alert("Configuration enregistrée.");
+    setToastMessage("Configuration enregistrée.");
+    setTimeout(() => setToastMessage(''), 4000);
     setShowFeatureModal(false);
+  };
+
+  const handleGenerateLicense = (e) => {
+    e.preventDefault();
+    const months = parseInt(licenseConfig.duration);
+    const expiration = new Date();
+    expiration.setMonth(expiration.getMonth() + months);
+
+    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const newKey = `BS-${new Date().getFullYear()}-${licenseConfig.planType.substring(0,4).toUpperCase()}-${randomSuffix}`;
+
+    setCompanies(companies.map(c => c.id === selectedCompany.id ? {
+       ...c,
+       licenseKey: newKey,
+       licenseExpiresAt: expiration.toISOString(),
+       planType: licenseConfig.planType,
+       isRevoked: false
+    } : c));
+
+    setToastMessage("Clé d'activation générée et assignée avec succès.");
+    setTimeout(() => setToastMessage(''), 4000);
+    setShowLicenseModal(false);
+  };
+
+  const toggleRevoke = (companyId) => {
+    setCompanies(companies.map(c => c.id === companyId ? { ...c, isRevoked: !c.isRevoked } : c));
+    setToastMessage("Statut de révocation mis à jour.");
+    setTimeout(() => setToastMessage(''), 4000);
   };
 
   const handleImpersonate = (company) => {
@@ -205,6 +237,10 @@ export default function SuperAdminDashboard({ setImpersonatedUser, globalSetting
                       </td>
                       <td className="px-5 py-4 font-medium">{company.monthlyFee} €</td>
                       <td className="px-5 py-4 text-right space-x-3">
+                         <button onClick={() => toggleRevoke(company.id)} className={`transition-colors ${company.isRevoked ? 'text-emerald-400 hover:text-emerald-300' : 'text-rose-400 hover:text-rose-300'}`} title={company.isRevoked ? 'Restaurer accès' : 'Révoquer accès'}>
+                            {company.isRevoked ? '🔓' : '🔒'}
+                         </button>
+                         <button onClick={() => { setSelectedCompany(company); setLicenseConfig({...licenseConfig, planType: company.planType}); setShowLicenseModal(true); }} className="text-amber-400 hover:text-amber-300 transition-colors" title="Gérer Licence">🔑</button>
                          <button onClick={() => { setSelectedCompany(company); setShowFeatureModal(true); }} className="text-slate-400 hover:text-white transition-colors" title="Modules & Features">⚙️</button>
                          <button onClick={() => handleImpersonate(company)} className="text-blue-400 hover:text-blue-300 font-medium transition-colors">Impersonate</button>
                       </td>
@@ -394,10 +430,56 @@ export default function SuperAdminDashboard({ setImpersonatedUser, globalSetting
         </div>
       )}
 
+      {/* Modal - Gérer Licence */}
+      {showLicenseModal && selectedCompany && (
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4" onClick={() => setShowLicenseModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
+              <h3 className="text-lg font-bold text-white">Licence : {selectedCompany.name}</h3>
+              <button onClick={() => setShowLicenseModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
+            </div>
+            <form onSubmit={handleGenerateLicense} className="p-5 space-y-4">
+              <div>
+                 <p className="text-sm text-slate-400 mb-1">Clé actuelle</p>
+                 <p className="text-white font-mono bg-slate-900 p-2 rounded border border-slate-700">{selectedCompany.licenseKey || 'Aucune'}</p>
+              </div>
+              <div>
+                 <p className="text-sm text-slate-400 mb-1">Expiration actuelle</p>
+                 <p className={`text-sm font-semibold ${selectedCompany.licenseExpiresAt && new Date(selectedCompany.licenseExpiresAt) < new Date() ? 'text-rose-400' : 'text-emerald-400'}`}>
+                    {selectedCompany.licenseExpiresAt ? new Date(selectedCompany.licenseExpiresAt).toLocaleString() : 'N/A'}
+                 </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1 mt-4">Nouveau Forfait</label>
+                <select className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-blue-500" value={licenseConfig.planType} onChange={e => setLicenseConfig({...licenseConfig, planType: e.target.value})}>
+                  <option value="Starter">Starter</option>
+                  <option value="Pro">Pro</option>
+                  <option value="Enterprise">Enterprise</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Durée de renouvellement</label>
+                <select className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white outline-none focus:border-blue-500" value={licenseConfig.duration} onChange={e => setLicenseConfig({...licenseConfig, duration: e.target.value})}>
+                  <option value="1">1 Mois</option>
+                  <option value="3">3 Mois</option>
+                  <option value="6">6 Mois</option>
+                  <option value="12">1 An</option>
+                  <option value="24">2 Ans</option>
+                </select>
+              </div>
+              <div className="pt-4 flex justify-end space-x-3">
+                <button type="button" onClick={() => setShowLicenseModal(false)} className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700">Annuler</button>
+                <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold hover:bg-blue-500 shadow">Générer Clé d'Activation</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Modal - Feature Flags */}
       {showFeatureModal && selectedCompany && (
-        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden">
+        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4" onClick={() => setShowFeatureModal(false)}>
+          <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900">
               <h3 className="text-lg font-bold text-white">Configuration : {selectedCompany.name}</h3>
               <button onClick={() => setShowFeatureModal(false)} className="text-slate-400 hover:text-white text-xl">✕</button>
